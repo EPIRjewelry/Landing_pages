@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">EPIR | Pierścionki Zaręczynowe</title>
+    <meta name="description" content="Wyjątkowe pierścionki zaręczynowe" id="page-description">
+    
+    <!-- Google Analytics 4 - będzie wczytany dynamicznie -->
+    <script id="ga4-script"></script>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Shopify Buy SDK -->
+    <script src="https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        stone: { 900: '#0c0a09', 800: '#1c1917', 600: '#57534e', 400: '#a8a29e' },
+                        gold: { DEFAULT: '#d4af37', light: '#e8c468' }
+                    },
+                    fontFamily: { 
+                        serif: ['"Cormorant Garamond"', 'serif'], 
+                        mono: ['"Space Mono"', 'monospace'] 
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0c0a09; color: #e7e5e4; }
+        .organic-bg { 
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E"); 
+        }
+        .section-hidden { display: none; }
+        .fade-in { animation: fadeIn 0.6s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .accordion-content.active { max-height: 500px; }
+    </style>
+</head>
+<body class="font-serif antialiased organic-bg">
+
+    <!-- Loading State -->
+    <div id="loading" class="fixed inset-0 bg-stone-900 z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gold mx-auto mb-4"></div>
+            <p class="font-mono text-gold tracking-widest">Ładowanie...</p>
+        </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="fixed w-full z-40 bg-stone-900/90 backdrop-blur-md border-b border-stone-800">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+            <span class="text-3xl tracking-widest font-bold text-gold">EPIR</span>
+            <div class="hidden md:flex space-x-8 font-mono text-sm tracking-widest text-stone-400">
+                <a href="#products" class="hover:text-gold transition-colors" onclick="trackEvent('click_nav', 'products')">KOLEKCJA</a>
+                <a href="#testimonials" class="hover:text-gold transition-colors" onclick="trackEvent('click_nav', 'testimonials')">OPINIE</a>
+                <a href="#faq" class="hover:text-gold transition-colors" onclick="trackEvent('click_nav', 'faq')">FAQ</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="section-hidden h-screen flex items-center justify-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/50 to-transparent z-10"></div>
+        <img id="hero-bg" src="" class="absolute inset-0 w-full h-full object-cover opacity-40" alt="Hero Background">
+        <div class="relative z-20 text-center max-w-4xl px-4 fade-in">
+            <p class="font-mono text-gold/80 tracking-widest mb-4">EST. 2023 | POLAND</p>
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold mb-4">
+                <span id="hero-title"></span>
+                <br><span id="hero-subtitle" class="italic font-light text-gold"></span>
+            </h1>
+            <p id="hero-description" class="text-xl md:text-2xl text-stone-400 mb-8 max-w-2xl mx-auto"></p>
+            <a id="hero-cta" href="#products" class="inline-block px-10 py-4 border-2 border-gold text-gold font-mono uppercase tracking-widest hover:bg-gold hover:text-stone-900 transition-all" onclick="trackEvent('click_hero_cta', 'hero')">
+                Odkryj Kolekcję
+            </a>
+        </div>
+    </section>
+
+    <!-- Trust Signals Section -->
+    <section id="trust" class="section-hidden py-16 bg-stone-900/50 border-y border-stone-800">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 id="trust-title" class="text-3xl font-bold text-center mb-12"></h2>
+            <div id="trust-badges" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                <!-- Badges will be inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section id="products" class="section-hidden py-24 bg-stone-900">
+        <div class="max-w-7xl mx-auto px-4 text-center mb-16 fade-in">
+            <h2 id="products-title" class="text-4xl md:text-5xl font-bold mb-4"></h2>
+            <p id="products-subtitle" class="text-stone-400 font-mono text-sm tracking-widest uppercase"></p>
+        </div>
+        <div id="products-grid" class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <!-- Products will be inserted here -->
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="section-hidden py-24 bg-stone-950">
+        <div class="max-w-7xl mx-auto px-4 text-center mb-16">
+            <h2 id="testimonials-title" class="text-4xl md:text-5xl font-bold mb-4"></h2>
+            <p id="testimonials-subtitle" class="text-stone-400 font-mono text-sm tracking-widest uppercase"></p>
+        </div>
+        <div id="testimonials-grid" class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Testimonials will be inserted here -->
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="section-hidden py-24 bg-stone-900">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 id="faq-title" class="text-4xl md:text-5xl font-bold mb-4"></h2>
+                <p id="faq-subtitle" class="text-stone-400 font-mono text-sm tracking-widest uppercase"></p>
+            </div>
+            <div id="faq-items" class="space-y-4">
+                <!-- FAQ items will be inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section id="cta-final" class="section-hidden relative py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/80 to-stone-900 z-10"></div>
+        <img id="cta-bg" src="" class="absolute inset-0 w-full h-full object-cover opacity-20" alt="CTA Background">
+        <div class="relative z-20 max-w-4xl mx-auto px-4 text-center">
+            <h2 id="cta-title" class="text-4xl md:text-6xl font-bold mb-6"></h2>
+            <p id="cta-description" class="text-xl text-stone-400 mb-12 max-w-2xl mx-auto"></p>
+            <div class="flex flex-col md:flex-row gap-4 justify-center">
+                <a id="cta-primary" href="#" class="px-10 py-4 bg-gold text-stone-900 font-mono font-bold uppercase tracking-widest hover:bg-gold-light transition-all" onclick="trackEvent('click_cta_primary', 'final_cta')">
+                    Umów Konsultację
+                </a>
+                <a id="cta-secondary" href="#" class="px-10 py-4 border-2 border-gold text-gold font-mono uppercase tracking-widest hover:bg-gold hover:text-stone-900 transition-all" onclick="trackEvent('click_cta_secondary', 'final_cta')">
+                    Zobacz Kolekcję
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-stone-800 text-center text-stone-600 font-mono text-xs tracking-widest">
+        &copy; 2024 EPIR JEWELLERY | MADE WITH PRECISION
+    </footer>
+
+    <!-- Main JavaScript -->
+    <script>
+        let config = null;
+        let shopifyClient = null;
+
+        // Initialize GA4 when config loads
+        function initGA4(measurementId) {
+            if (!measurementId || measurementId === 'G-XXXXXXXXXX') return;
+            
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+            document.head.appendChild(script);
+
+            script.onload = () => {
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', measurementId);
+                console.log('✅ GA4 initialized:', measurementId);
+            };
+        }
+
+        // Track custom events
+        function trackEvent(eventName, category, label = '', value = 0) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, {
+                    'event_category': category,
+                    'event_label': label,
+                    'value': value
+                });
+            }
+        }
+
+        // Load config from API
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/load');
+                if (!response.ok) {
+                    throw new Error('Failed to load config');
+                }
+                config = await response.json();
+                console.log('✅ Config loaded:', config);
+                return config;
+            } catch (error) {
+                console.error('❌ Error loading config:', error);
+                // Fallback to local mode or show error
+                return null;
+            }
+        }
+
+        // Render Hero Section
+        function renderHero() {
+            const hero = config.sections.hero;
+            if (!hero.active) return;
+
+            document.getElementById('hero').classList.remove('section-hidden');
+            document.getElementById('hero-title').textContent = hero.title;
+            document.getElementById('hero-subtitle').textContent = hero.subtitle;
+            document.getElementById('hero-description').textContent = hero.description;
+            document.getElementById('hero-bg').src = hero.background_image;
+            
+            const ctaBtn = document.getElementById('hero-cta');
+            ctaBtn.textContent = hero.cta_text;
+            ctaBtn.href = hero.cta_link;
+        }
+
+        // Render Trust Section
+        function renderTrust() {
+            const trust = config.sections.trust;
+            if (!trust.active) return;
+
+            document.getElementById('trust').classList.remove('section-hidden');
+            document.getElementById('trust-title').textContent = trust.title;
+
+            const badgesContainer = document.getElementById('trust-badges');
+            badgesContainer.innerHTML = trust.badges.map(badge => `
+                <div class="text-center p-6 bg-stone-800/30 rounded-lg hover:bg-stone-800/50 transition-all">
+                    <i data-lucide="${badge.icon}" class="w-12 h-12 mx-auto mb-4 text-gold"></i>
+                    <h3 class="font-bold text-lg mb-2">${badge.title}</h3>
+                    <p class="text-sm text-stone-400">${badge.description}</p>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // Render Products Section
+        function renderProducts() {
+            const products = config.sections.products;
+            if (!products.active) return;
+
+            document.getElementById('products').classList.remove('section-hidden');
+            document.getElementById('products-title').textContent = products.title;
+            document.getElementById('products-subtitle').textContent = products.subtitle;
+
+            const gridContainer = document.getElementById('products-grid');
+            gridContainer.innerHTML = products.items.map(product => `
+                <div class="flex flex-col border border-stone-800 bg-stone-800/20 overflow-hidden hover:border-gold transition-all group">
+                    <div class="relative overflow-hidden">
+                        <img src="${product.image}" class="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500" alt="${product.name}">
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <h3 class="text-2xl font-bold mb-2">${product.name}</h3>
+                        <p class="text-stone-400 mb-4 flex-grow text-sm">${product.description}</p>
+                        <p class="text-gold text-xl font-bold mb-4">${product.price}</p>
+                        <button 
+                            class="w-full py-3 bg-gold text-stone-900 font-mono font-bold uppercase tracking-widest hover:bg-white transition-colors"
+                            onclick="addToCart('${product.shopify_product_id}', '${product.name}'); trackEvent('add_to_cart', 'ecommerce', '${product.name}', ${parseInt(product.price.replace(/[^\d]/g, ''))})"
+                        >
+                            ${product.cta_text}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Testimonials Section
+        function renderTestimonials() {
+            const testimonials = config.sections.testimonials;
+            if (!testimonials.active) return;
+
+            document.getElementById('testimonials').classList.remove('section-hidden');
+            document.getElementById('testimonials-title').textContent = testimonials.title;
+            document.getElementById('testimonials-subtitle').textContent = testimonials.subtitle;
+
+            const gridContainer = document.getElementById('testimonials-grid');
+            gridContainer.innerHTML = testimonials.items.map(item => `
+                <div class="bg-stone-900 border border-stone-800 p-8 rounded-lg hover:border-gold transition-all">
+                    <div class="flex items-center mb-4">
+                        <img src="${item.image}" class="w-16 h-16 rounded-full object-cover mr-4" alt="${item.name}">
+                        <div>
+                            <h4 class="font-bold text-lg">${item.name}</h4>
+                            <p class="text-stone-500 text-sm">${item.location}</p>
+                            <div class="flex gap-1 mt-1">
+                                ${'★'.repeat(item.rating)}<span class="text-stone-600">${'★'.repeat(5 - item.rating)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-stone-400 italic mb-4">"${item.text}"</p>
+                    ${item.product_image ? `<img src="${item.product_image}" class="w-full h-48 object-cover rounded mt-4" alt="Product">` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Render FAQ Section
+        function renderFAQ() {
+            const faq = config.sections.faq;
+            if (!faq.active) return;
+
+            document.getElementById('faq').classList.remove('section-hidden');
+            document.getElementById('faq-title').textContent = faq.title;
+            document.getElementById('faq-subtitle').textContent = faq.subtitle;
+
+            const faqContainer = document.getElementById('faq-items');
+            faqContainer.innerHTML = faq.items.map((item, index) => `
+                <div class="border border-stone-800 bg-stone-800/20 rounded-lg overflow-hidden">
+                    <button 
+                        class="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-stone-800/40 transition-all"
+                        onclick="toggleAccordion(${index})"
+                    >
+                        <span class="font-bold text-lg">${item.question}</span>
+                        <i data-lucide="chevron-down" class="w-6 h-6 text-gold accordion-icon-${index} transition-transform"></i>
+                    </button>
+                    <div class="accordion-content accordion-content-${index} px-6 pb-4">
+                        <p class="text-stone-400">${item.answer}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // Toggle FAQ Accordion
+        function toggleAccordion(index) {
+            const content = document.querySelector(`.accordion-content-${index}`);
+            const icon = document.querySelector(`.accordion-icon-${index}`);
+            
+            content.classList.toggle('active');
+            icon.style.transform = content.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+            
+            trackEvent('toggle_faq', 'engagement', `faq_${index}`);
+        }
+
+        // Render Final CTA Section
+        function renderFinalCTA() {
+            const cta = config.sections.cta_final;
+            if (!cta.active) return;
+
+            document.getElementById('cta-final').classList.remove('section-hidden');
+            document.getElementById('cta-title').textContent = cta.title;
+            document.getElementById('cta-description').textContent = cta.description;
+            document.getElementById('cta-bg').src = cta.background_image;
+
+            const primaryBtn = document.getElementById('cta-primary');
+            primaryBtn.textContent = cta.primary_cta.text;
+            primaryBtn.href = cta.primary_cta.link;
+
+            const secondaryBtn = document.getElementById('cta-secondary');
+            secondaryBtn.textContent = cta.secondary_cta.text;
+            secondaryBtn.href = cta.secondary_cta.link;
+        }
+
+        // Initialize Shopify Buy SDK
+        function initShopify() {
+            if (!config.shopify.storefront_access_token || !config.shopify.store_domain) {
+                console.warn('⚠️ Shopify not configured');
+                return;
+            }
+
+            shopifyClient = ShopifyBuy.buildClient({
+                domain: config.shopify.store_domain,
+                storefrontAccessToken: config.shopify.storefront_access_token
+            });
+
+            console.log('✅ Shopify initialized');
+        }
+
+        // Add to Cart (placeholder - implement with Shopify)
+        function addToCart(productId, productName) {
+            if (!productId) {
+                alert(`Produkt "${productName}" zostanie wkrótce dostępny!`);
+                return;
+            }
+
+            // Implement Shopify cart logic here
+            alert(`Dodano "${productName}" do koszyka!`);
+        }
+
+        // Update page metadata
+        function updateMetadata() {
+            document.getElementById('page-title').textContent = config.site.title;
+            document.getElementById('page-description').content = config.site.description;
+        }
+
+        // Main initialization
+        async function init() {
+            try {
+                await loadConfig();
+                
+                if (!config) {
+                    throw new Error('Config not loaded');
+                }
+
+                // Update page metadata
+                updateMetadata();
+
+                // Initialize GA4
+                initGA4(config.site.ga4_id);
+
+                // Render all sections
+                renderHero();
+                renderTrust();
+                renderProducts();
+                renderTestimonials();
+                renderFAQ();
+                renderFinalCTA();
+
+                // Initialize Shopify
+                initShopify();
+
+                // Hide loading screen
+                document.getElementById('loading').style.display = 'none';
+
+                // Initialize Lucide icons
+                lucide.createIcons();
+
+                console.log('✅ Landing page initialized successfully');
+
+            } catch (error) {
+                console.error('❌ Initialization error:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="text-center">
+                        <i data-lucide="alert-circle" class="w-16 h-16 text-red-500 mx-auto mb-4"></i>
+                        <p class="text-red-500 font-mono">Błąd ładowania strony</p>
+                        <p class="text-stone-500 text-sm mt-2">Sprawdź konfigurację lub odśwież stronę</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+{
+  "site": {
+    "title": "EPIR | Pierścionki Zaręczynowe",
+    "description": "Wyjątkowe pierścionki zaręczynowe. Ręcznie wykonane z najwyższej jakości materiałów.",
+    "ga4_id": "G-XXXXXXXXXX"
+  },
+  "sections": {
+    "hero": {
+      "active": true,
+      "title": "Pierścionki które",
+      "subtitle": "opowiadają historię",
+      "description": "Odkryj kolekcję pierścionków zaręczynowych, każdy wykonany ręcznie przez polskich mistrzów złotnictwa.",
+      "cta_text": "Odkryj Kolekcję",
+      "cta_link": "#products",
+      "background_image": "/images/hero-rings.jpg",
+      "overlay_opacity": 0.5
+    },
+    "products": {
+      "active": true,
+      "title": "Nasza Kolekcja",
+      "subtitle": "// UNIKATY EPIR",
+      "items": [
+        {
+          "id": 1,
+          "shopify_product_id": "",
+          "name": "Solitaire Classic",
+          "description": "Klasyczny solitaire z diamentem 1ct w oprawie z białego złota Au585.",
+          "price": "12,500 PLN",
+          "image": "/images/rings/solitaire-classic.jpg",
+          "cta_text": "Dodaj do koszyka"
+        },
+        {
+          "id": 2,
+          "shopify_product_id": "",
+          "name": "Organic Moissanite",
+          "description": "Nowoczesna oprawa organiczna z moissanitem 2ct - maksymalny blask i ogień.",
+          "price": "8,900 PLN",
+          "image": "/images/rings/organic-moissanite.jpg",
+          "cta_text": "Dodaj do koszyka"
+        },
+        {
+          "id": 3,
+          "shopify_product_id": "",
+          "name": "Rose Gold Trilogy",
+          "description": "Trzy diamenty symbolizujące przeszłość, teraźniejszość i przyszłość w różowym złocie.",
+          "price": "15,200 PLN",
+          "image": "/images/rings/trilogy-rose.jpg",
+          "cta_text": "Dodaj do koszyka"
+        },
+        {
+          "id": 4,
+          "shopify_product_id": "",
+          "name": "Emerald Halo",
+          "description": "Szmaragd otoczony aureolą drobnych diamentów - styl vintage.",
+          "price": "18,500 PLN",
+          "image": "/images/rings/emerald-halo.jpg",
+          "cta_text": "Dodaj do koszyka"
+        }
+      ]
+    },
+    "trust": {
+      "active": true,
+      "title": "Gwarancja Jakości",
+      "badges": [
+        {
+          "icon": "shield-check",
+          "title": "100% Au585",
+          "description": "Certyfikowane złoto próby 585"
+        },
+        {
+          "icon": "gem",
+          "title": "Certyfikaty GIA",
+          "description": "Kamienie z międzynarodowymi certyfikatami"
+        },
+        {
+          "icon": "truck",
+          "title": "Darmowa Dostawa",
+          "description": "Bezpieczna przesyłka kurierem w całej Polsce"
+        },
+        {
+          "icon": "rotate-ccw",
+          "title": "14 dni na zwrot",
+          "description": "Pełna gwarancja satysfakcji"
+        },
+        {
+          "icon": "award",
+          "title": "Gwarancja dożywotnia",
+          "description": "Bezpłatne czyszczenie i konserwacja"
+        }
+      ]
+    },
+    "testimonials": {
+      "active": true,
+      "title": "Opinie Klientów",
+      "subtitle": "// CO MÓWIĄ O NAS",
+      "items": [
+        {
+          "id": 1,
+          "name": "Anna K.",
+          "location": "Warszawa",
+          "rating": 5,
+          "text": "Pierścionek zaręczynowy od EPIR to arcydzieło. Jakość wykonania i dbałość o detale są niesamowite. Mój narzeczony wybrał idealnie!",
+          "image": "/images/testimonials/anna-k.jpg",
+          "product_image": "/images/testimonials/ring-anna.jpg"
+        },
+        {
+          "id": 2,
+          "name": "Michał P.",
+          "location": "Kraków",
+          "rating": 5,
+          "text": "Obsługa na najwyższym poziomie. Pomoc w doborze rozmiaru i kamienia była bezcenna. Pierścionek jest jeszcze piękniejszy na żywo!",
+          "image": "/images/testimonials/michal-p.jpg",
+          "product_image": "/images/testimonials/ring-michal.jpg"
+        },
+        {
+          "id": 3,
+          "name": "Karolina M.",
+          "location": "Gdańsk",
+          "rating": 5,
+          "text": "Wymarzone pierścionki ślubne! Zdecydowaliśmy się na personalizację i nie żałujemy. To biżuteria na całe życie.",
+          "image": "/images/testimonials/karolina-m.jpg",
+          "product_image": "/images/testimonials/ring-karolina.jpg"
+        }
+      ]
+    },
+    "faq": {
+      "active": true,
+      "title": "Najczęściej Zadawane Pytania",
+      "subtitle": "// FAQ",
+      "items": [
+        {
+          "id": 1,
+          "question": "Jak dobrać odpowiedni rozmiar pierścionka?",
+          "answer": "Oferujemy bezpłatny zestaw do pomiaru rozmiaru, który wyślemy do Ciebie kurierem. Możesz również odwiedzić nasz showroom, gdzie profesjonalnie dobierzemy rozmiar."
+        },
+        {
+          "id": 2,
+          "question": "Jaki jest czas realizacji zamówienia?",
+          "answer": "Standardowe pierścionki z kolekcji realizujemy w 5-7 dni roboczych. Projekty personalizowane mogą wymagać 3-4 tygodni, w zależności od złożoności."
+        },
+        {
+          "id": 3,
+          "question": "Czy mogę zwrócić pierścionek?",
+          "answer": "Tak, masz 14 dni na zwrot lub wymianę bez podania przyczyny. Pierścionek musi być w stanie nienaruszonym z wszystkimi certyfikatami i opakowaniem."
+        },
+        {
+          "id": 4,
+          "question": "Skąd pochodzą kamienie szlachetne?",
+          "answer": "Wszystkie nasze diamenty pochodzą z certyfikowanych źródeł zgodnych z Procesem Kimberley. Moissanity to syntetyczne kamienie najwyższej jakości z amerykańskich laboratoriów."
+        },
+        {
+          "id": 5,
+          "question": "Czy oferujecie grawerowanie?",
+          "answer": "Tak! Bezpłatne grawerowanie wewnątrz pierścionka (do 20 znaków). Możesz dodać dedykację podczas składania zamówienia."
+        },
+        {
+          "id": 6,
+          "question": "Jak pielęgnować pierścionek zaręczynowy?",
+          "answer": "Oferujemy dożywotnią bezpłatną konserwację - czyszczenie ultradźwiękowe i sprawdzenie opraway. Zalecamy wizytę co 6-12 miesięcy."
+        }
+      ]
+    },
+    "cta_final": {
+      "active": true,
+      "title": "Gotowy na Początek Waszej Historii?",
+      "description": "Umów się na bezpłatną konsultację w naszym showroomie lub zamów online z darmową dostawą i zwrotem.",
+      "primary_cta": {
+        "text": "Umów Konsultację",
+        "link": "#contact"
+      },
+      "secondary_cta": {
+        "text": "Zobacz Pełną Kolekcję",
+        "link": "https://epirbizuteria.pl/collections/pierscionki"
+      },
+      "background_image": "/images/cta-background.jpg"
+    }
+  },
+  "shopify": {
+    "storefront_access_token": "",
+    "store_domain": "twoj-sklep.myshopify.com"
+  }
+}

@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - EPIR Landing Page</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Inter"', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: .3s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #10b981;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        .section-card {
+            transition: all 0.2s;
+        }
+        .section-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .array-item {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <i data-lucide="settings" class="w-6 h-6 text-gray-700"></i>
+                <h1 class="text-2xl font-bold text-gray-900">Panel Administracyjny</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="preview-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2" onclick="openPreview()">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    Podgląd
+                </button>
+                <button id="save-btn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2" onclick="saveConfig()">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    Zapisz Zmiany
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-600">Ładowanie konfiguracji...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        
+        <!-- Status Message -->
+        <div id="status-message" class="hidden mb-6 p-4 rounded-lg">
+            <p id="status-text"></p>
+        </div>
+
+        <!-- Site Config -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i data-lucide="globe" class="w-5 h-5"></i>
+                Konfiguracja Strony
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł Strony</label>
+                    <input type="text" id="site-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Google Analytics 4 ID</label>
+                    <input type="text" id="site-ga4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="G-XXXXXXXXXX">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Opis Strony</label>
+                    <textarea id="site-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sections -->
+        <div class="space-y-6">
+            
+            <!-- Hero Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="image" class="w-5 h-5"></i>
+                        Sekcja Hero
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="hero-active" onchange="toggleSection('hero')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="hero-content" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł</label>
+                            <input type="text" id="hero-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Podtytuł (złoty)</label>
+                            <input type="text" id="hero-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Opis</label>
+                        <textarea id="hero-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tekst przycisku CTA</label>
+                            <input type="text" id="hero-cta-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Link CTA</label>
+                            <input type="text" id="hero-cta-link" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ścieżka do obrazu tła</label>
+                        <input type="text" id="hero-bg-image" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="/images/hero-rings.jpg">
+                        <p class="text-xs text-gray-500 mt-1">💡 Wrzuć obraz do /public/images/ i wpisz ścieżkę tutaj</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trust Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                        Trust Signals
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="trust-active" onchange="toggleSection('trust')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="trust-content" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł sekcji</label>
+                        <input type="text" id="trust-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Odznaki (po 3-5)</label>
+                        <div id="trust-badges-list" class="space-y-3">
+                            <!-- Trust badges will be inserted here -->
+                        </div>
+                        <button onclick="addTrustBadge()" class="mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Dodaj odznakę
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                        Produkty
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="products-active" onchange="toggleSection('products')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="products-content" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł sekcji</label>
+                            <input type="text" id="products-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Podtytuł</label>
+                            <input type="text" id="products-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Lista produktów</label>
+                        <div id="products-list" class="space-y-4">
+                            <!-- Products will be inserted here -->
+                        </div>
+                        <button onclick="addProduct()" class="mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Dodaj produkt
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonials Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        Opinie Klientów
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="testimonials-active" onchange="toggleSection('testimonials')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="testimonials-content" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł sekcji</label>
+                            <input type="text" id="testimonials-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Podtytuł</label>
+                            <input type="text" id="testimonials-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Lista opinii</label>
+                        <div id="testimonials-list" class="space-y-4">
+                            <!-- Testimonials will be inserted here -->
+                        </div>
+                        <button onclick="addTestimonial()" class="mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Dodaj opinię
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        FAQ
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="faq-active" onchange="toggleSection('faq')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="faq-content" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł sekcji</label>
+                            <input type="text" id="faq-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Podtytuł</label>
+                            <input type="text" id="faq-subtitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Lista pytań</label>
+                        <div id="faq-list" class="space-y-4">
+                            <!-- FAQ items will be inserted here -->
+                        </div>
+                        <button onclick="addFAQ()" class="mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Dodaj pytanie
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA Final Section -->
+            <div class="section-card bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="megaphone" class="w-5 h-5"></i>
+                        Finalne CTA
+                    </h2>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cta-final-active" onchange="toggleSection('cta_final')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div id="cta-final-content" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tytuł</label>
+                        <input type="text" id="cta-final-title" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Opis</label>
+                        <textarea id="cta-final-description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tekst głównego przycisku</label>
+                            <input type="text" id="cta-primary-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Link głównego przycisku</label>
+                            <input type="text" id="cta-primary-link" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tekst drugiego przycisku</label>
+                            <input type="text" id="cta-secondary-text" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Link drugiego przycisku</label>
+                            <input type="text" id="cta-secondary-link" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ścieżka do obrazu tła</label>
+                        <input type="text" id="cta-final-bg-image" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shopify Config -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                    Konfiguracja Shopify
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Storefront Access Token</label>
+                        <input type="text" id="shopify-token" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="shpat_...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Store Domain</label>
+                        <input type="text" id="shopify-domain" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="twoj-sklep.myshopify.com">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let config = null;
+
+        // Load config
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/load');
+                if (!response.ok) {
+                    throw new Error('Config not found');
+                }
+                config = await response.json();
+                populateForm();
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading config:', error);
+                showStatus('Nie znaleziono konfiguracji. Inicjalizuję...', 'warning');
+                await initializeConfig();
+            }
+        }
+
+        // Initialize config with API
+        async function initializeConfig() {
+            try {
+                const response = await fetch('/api/init', { method: 'POST' });
+                if (!response.ok) throw new Error('Init failed');
+                const data = await response.json();
+                config = data.config;
+                populateForm();
+                document.getElementById('loading').style.display = 'none';
+                showStatus('Konfiguracja zainicjalizowana pomyślnie!', 'success');
+            } catch (error) {
+                showStatus('Błąd inicjalizacji: ' + error.message, 'error');
+            }
+        }
+
+        // Populate form with config data
+        function populateForm() {
+            // Site config
+            document.getElementById('site-title').value = config.site.title || '';
+            document.getElementById('site-description').value = config.site.description || '';
+            document.getElementById('site-ga4').value = config.site.ga4_id || '';
+
+            // Hero
+            const hero = config.sections.hero;
+            document.getElementById('hero-active').checked = hero.active;
+            document.getElementById('hero-title').value = hero.title || '';
+            document.getElementById('hero-subtitle').value = hero.subtitle || '';
+            document.getElementById('hero-description').value = hero.description || '';
+            document.getElementById('hero-cta-text').value = hero.cta_text || '';
+            document.getElementById('hero-cta-link').value = hero.cta_link || '';
+            document.getElementById('hero-bg-image').value = hero.background_image || '';
+
+            // Trust
+            const trust = config.sections.trust;
+            document.getElementById('trust-active').checked = trust.active;
+            document.getElementById('trust-title').value = trust.title || '';
+            renderTrustBadges(trust.badges);
+
+            // Products
+            const products = config.sections.products;
+            document.getElementById('products-active').checked = products.active;
+            document.getElementById('products-title').value = products.title || '';
+            document.getElementById('products-subtitle').value = products.subtitle || '';
+            renderProducts(products.items);
+
+            // Testimonials
+            const testimonials = config.sections.testimonials;
+            document.getElementById('testimonials-active').checked = testimonials.active;
+            document.getElementById('testimonials-title').value = testimonials.title || '';
+            document.getElementById('testimonials-subtitle').value = testimonials.subtitle || '';
+            renderTestimonials(testimonials.items);
+
+            // FAQ
+            const faq = config.sections.faq;
+            document.getElementById('faq-active').checked = faq.active;
+            document.getElementById('faq-title').value = faq.title || '';
+            document.getElementById('faq-subtitle').value = faq.subtitle || '';
+            renderFAQ(faq.items);
+
+            // CTA Final
+            const ctaFinal = config.sections.cta_final;
+            document.getElementById('cta-final-active').checked = ctaFinal.active;
+            document.getElementById('cta-final-title').value = ctaFinal.title || '';
+            document.getElementById('cta-final-description').value = ctaFinal.description || '';
+            document.getElementById('cta-primary-text').value = ctaFinal.primary_cta.text || '';
+            document.getElementById('cta-primary-link').value = ctaFinal.primary_cta.link || '';
+            document.getElementById('cta-secondary-text').value = ctaFinal.secondary_cta.text || '';
+            document.getElementById('cta-secondary-link').value = ctaFinal.secondary_cta.link || '';
+            document.getElementById('cta-final-bg-image').value = ctaFinal.background_image || '';
+
+            // Shopify
+            document.getElementById('shopify-token').value = config.shopify.storefront_access_token || '';
+            document.getElementById('shopify-domain').value = config.shopify.store_domain || '';
+
+            lucide.createIcons();
+        }
+
+        // Render functions for array items
+        function renderTrustBadges(badges) {
+            const container = document.getElementById('trust-badges-list');
+            container.innerHTML = badges.map((badge, index) => `
+                <div class="array-item bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-3 gap-3">
+                        <input type="text" value="${badge.icon}" placeholder="Ikona (lucide)" class="px-3 py-2 border border-gray-300 rounded-lg" data-trust-icon="${index}">
+                        <input type="text" value="${badge.title}" placeholder="Tytuł" class="px-3 py-2 border border-gray-300 rounded-lg" data-trust-title="${index}">
+                        <input type="text" value="${badge.description}" placeholder="Opis" class="px-3 py-2 border border-gray-300 rounded-lg" data-trust-desc="${index}">
+                    </div>
+                    <button onclick="removeTrustBadge(${index})" class="mt-2 text-sm text-red-600 hover:text-red-800">Usuń</button>
+                </div>
+            `).join('');
+        }
+
+        function renderProducts(products) {
+            const container = document.getElementById('products-list');
+            container.innerHTML = products.map((product, index) => `
+                <div class="array-item bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <input type="text" value="${product.name}" placeholder="Nazwa produktu" class="px-3 py-2 border border-gray-300 rounded-lg" data-product-name="${index}">
+                        <input type="text" value="${product.price}" placeholder="Cena" class="px-3 py-2 border border-gray-300 rounded-lg" data-product-price="${index}">
+                    </div>
+                    <textarea placeholder="Opis" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3" data-product-desc="${index}">${product.description}</textarea>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" value="${product.image}" placeholder="Ścieżka do obrazu" class="px-3 py-2 border border-gray-300 rounded-lg" data-product-image="${index}">
+                        <input type="text" value="${product.shopify_product_id || ''}" placeholder="Shopify Product ID" class="px-3 py-2 border border-gray-300 rounded-lg" data-product-shopify-id="${index}">
+                    </div>
+                    <button onclick="removeProduct(${index})" class="mt-2 text-sm text-red-600 hover:text-red-800">Usuń</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTestimonials(testimonials) {
+            const container = document.getElementById('testimonials-list');
+            container.innerHTML = testimonials.map((item, index) => `
+                <div class="array-item bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-3 gap-3 mb-3">
+                        <input type="text" value="${item.name}" placeholder="Imię" class="px-3 py-2 border border-gray-300 rounded-lg" data-testimonial-name="${index}">
+                        <input type="text" value="${item.location}" placeholder="Lokalizacja" class="px-3 py-2 border border-gray-300 rounded-lg" data-testimonial-location="${index}">
+                        <input type="number" value="${item.rating}" min="1" max="5" placeholder="Ocena (1-5)" class="px-3 py-2 border border-gray-300 rounded-lg" data-testimonial-rating="${index}">
+                    </div>
+                    <textarea placeholder="Tekst opinii" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3" data-testimonial-text="${index}">${item.text}</textarea>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" value="${item.image}" placeholder="Zdjęcie klienta" class="px-3 py-2 border border-gray-300 rounded-lg" data-testimonial-image="${index}">
+                        <input type="text" value="${item.product_image || ''}" placeholder="Zdjęcie produktu" class="px-3 py-2 border border-gray-300 rounded-lg" data-testimonial-product-image="${index}">
+                    </div>
+                    <button onclick="removeTestimonial(${index})" class="mt-2 text-sm text-red-600 hover:text-red-800">Usuń</button>
+                </div>
+            `).join('');
+        }
+
+        function renderFAQ(faqs) {
+            const container = document.getElementById('faq-list');
+            container.innerHTML = faqs.map((item, index) => `
+                <div class="array-item bg-gray-50 p-4 rounded-lg">
+                    <input type="text" value="${item.question}" placeholder="Pytanie" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3" data-faq-question="${index}">
+                    <textarea placeholder="Odpowiedź" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg" data-faq-answer="${index}">${item.answer}</textarea>
+                    <button onclick="removeFAQ(${index})" class="mt-2 text-sm text-red-600 hover:text-red-800">Usuń</button>
+                </div>
+            `).join('');
+        }
+
+        // Add/Remove functions
+        function addTrustBadge() {
+            config.sections.trust.badges.push({ icon: 'star', title: '', description: '' });
+            renderTrustBadges(config.sections.trust.badges);
+        }
+
+        function removeTrustBadge(index) {
+            config.sections.trust.badges.splice(index, 1);
+            renderTrustBadges(config.sections.trust.badges);
+        }
+
+        function addProduct() {
+            config.sections.products.items.push({
+                id: config.sections.products.items.length + 1,
+                name: '',
+                description: '',
+                price: '',
+                image: '',
+                shopify_product_id: '',
+                cta_text: 'Dodaj do koszyka'
+            });
+            renderProducts(config.sections.products.items);
+        }
+
+        function removeProduct(index) {
+            config.sections.products.items.splice(index, 1);
+            renderProducts(config.sections.products.items);
+        }
+
+        function addTestimonial() {
+            config.sections.testimonials.items.push({
+                id: config.sections.testimonials.items.length + 1,
+                name: '',
+                location: '',
+                rating: 5,
+                text: '',
+                image: '',
+                product_image: ''
+            });
+            renderTestimonials(config.sections.testimonials.items);
+        }
+
+        function removeTestimonial(index) {
+            config.sections.testimonials.items.splice(index, 1);
+            renderTestimonials(config.sections.testimonials.items);
+        }
+
+        function addFAQ() {
+            config.sections.faq.items.push({
+                id: config.sections.faq.items.length + 1,
+                question: '',
+                answer: ''
+            });
+            renderFAQ(config.sections.faq.items);
+        }
+
+        function removeFAQ(index) {
+            config.sections.faq.items.splice(index, 1);
+            renderFAQ(config.sections.faq.items);
+        }
+
+        // Toggle section visibility
+        function toggleSection(sectionName) {
+            const isActive = document.getElementById(`${sectionName}-active`).checked;
+            config.sections[sectionName].active = isActive;
+            
+            const content = document.getElementById(`${sectionName}-content`);
+            if (content) {
+                content.style.opacity = isActive ? '1' : '0.5';
+            }
+        }
+
+        // Collect form data into config
+        function collectFormData() {
+            // Site config
+            config.site.title = document.getElementById('site-title').value;
+            config.site.description = document.getElementById('site-description').value;
+            config.site.ga4_id = document.getElementById('site-ga4').value;
+
+            // Hero
+            config.sections.hero.title = document.getElementById('hero-title').value;
+            config.sections.hero.subtitle = document.getElementById('hero-subtitle').value;
+            config.sections.hero.description = document.getElementById('hero-description').value;
+            config.sections.hero.cta_text = document.getElementById('hero-cta-text').value;
+            config.sections.hero.cta_link = document.getElementById('hero-cta-link').value;
+            config.sections.hero.background_image = document.getElementById('hero-bg-image').value;
+
+            // Trust badges
+            config.sections.trust.title = document.getElementById('trust-title').value;
+            config.sections.trust.badges = config.sections.trust.badges.map((_, index) => ({
+                icon: document.querySelector(`[data-trust-icon="${index}"]`).value,
+                title: document.querySelector(`[data-trust-title="${index}"]`).value,
+                description: document.querySelector(`[data-trust-desc="${index}"]`).value
+            }));
+
+            // Products
+            config.sections.products.title = document.getElementById('products-title').value;
+            config.sections.products.subtitle = document.getElementById('products-subtitle').value;
+            config.sections.products.items = config.sections.products.items.map((item, index) => ({
+                ...item,
+                name: document.querySelector(`[data-product-name="${index}"]`).value,
+                description: document.querySelector(`[data-product-desc="${index}"]`).value,
+                price: document.querySelector(`[data-product-price="${index}"]`).value,
+                image: document.querySelector(`[data-product-image="${index}"]`).value,
+                shopify_product_id: document.querySelector(`[data-product-shopify-id="${index}"]`).value
+            }));
+
+            // Testimonials
+            config.sections.testimonials.title = document.getElementById('testimonials-title').value;
+            config.sections.testimonials.subtitle = document.getElementById('testimonials-subtitle').value;
+            config.sections.testimonials.items = config.sections.testimonials.items.map((item, index) => ({
+                ...item,
+                name: document.querySelector(`[data-testimonial-name="${index}"]`).value,
+                location: document.querySelector(`[data-testimonial-location="${index}"]`).value,
+                rating: parseInt(document.querySelector(`[data-testimonial-rating="${index}"]`).value),
+                text: document.querySelector(`[data-testimonial-text="${index}"]`).value,
+                image: document.querySelector(`[data-testimonial-image="${index}"]`).value,
+                product_image: document.querySelector(`[data-testimonial-product-image="${index}"]`).value
+            }));
+
+            // FAQ
+            config.sections.faq.title = document.getElementById('faq-title').value;
+            config.sections.faq.subtitle = document.getElementById('faq-subtitle').value;
+            config.sections.faq.items = config.sections.faq.items.map((item, index) => ({
+                ...item,
+                question: document.querySelector(`[data-faq-question="${index}"]`).value,
+                answer: document.querySelector(`[data-faq-answer="${index}"]`).value
+            }));
+
+            // CTA Final
+            config.sections.cta_final.title = document.getElementById('cta-final-title').value;
+            config.sections.cta_final.description = document.getElementById('cta-final-description').value;
+            config.sections.cta_final.primary_cta.text = document.getElementById('cta-primary-text').value;
+            config.sections.cta_final.primary_cta.link = document.getElementById('cta-primary-link').value;
+            config.sections.cta_final.secondary_cta.text = document.getElementById('cta-secondary-text').value;
+            config.sections.cta_final.secondary_cta.link = document.getElementById('cta-secondary-link').value;
+            config.sections.cta_final.background_image = document.getElementById('cta-final-bg-image').value;
+
+            // Shopify
+            config.shopify.storefront_access_token = document.getElementById('shopify-token').value;
+            config.shopify.store_domain = document.getElementById('shopify-domain').value;
+        }
+
+        // Save config
+        async function saveConfig() {
+            try {
+                collectFormData();
+                
+                const saveBtn = document.getElementById('save-btn');
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Zapisywanie...';
+                lucide.createIcons();
+
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                if (!response.ok) throw new Error('Save failed');
+
+                showStatus('✅ Konfiguracja zapisana pomyślnie!', 'success');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Zapisz Zmiany';
+                lucide.createIcons();
+
+            } catch (error) {
+                showStatus('❌ Błąd zapisu: ' + error.message, 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Zapisz Zmiany';
+                lucide.createIcons();
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status-message');
+            const textEl = document.getElementById('status-text');
+            
+            statusEl.className = `mb-6 p-4 rounded-lg ${
+                type === 'success' ? 'bg-green-100 text-green-800' :
+                type === 'error' ? 'bg-red-100 text-red-800' :
+                'bg-yellow-100 text-yellow-800'
+            }`;
+            
+            textEl.textContent = message;
+            statusEl.classList.remove('hidden');
+            
+            setTimeout(() => statusEl.classList.add('hidden'), 5000);
+        }
+
+        // Open preview
+        function openPreview() {
+            window.open('/', '_blank');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
