@@ -130,7 +130,7 @@ export async function onRequestPost(context) {
         }
       },
       "shopify": {
-        "storefront_access_token": "",
+        "storefront_access_token": "d69177fcd5f76b73e5ff203917dff36a",
         "store_domain": "bizuteria.epirbizuteria.pl"
       }
     };
