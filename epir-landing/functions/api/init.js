@@ -131,7 +131,7 @@ export async function onRequestPost(context) {
       },
       "shopify": {
         "storefront_access_token": "",
-        "store_domain": "twoj-sklep.myshopify.com"
+        "store_domain": "bizuteria.epirbizuteria.pl"
       }
     };
 
