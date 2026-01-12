@@ -113,6 +113,16 @@
             <h2 id="testimonials-title" class="text-4xl md:text-5xl font-bold mb-4"></h2>
             <p id="testimonials-subtitle" class="text-stone-400 font-mono text-sm tracking-widest uppercase"></p>
         </div>
+        <div id="jdgm-reviews-carousel" class="jdgm-carousel-wrapper max-w-6xl mx-auto px-4 mb-12">
+            <div class="jdgm-carousel-title-and-link flex flex-col items-start gap-3">
+                <h3 class="jdgm-carousel-title text-3xl font-bold text-gold">Doświadczenia klientów</h3>
+                <span class="jdgm-all-reviews-rating-wrapper inline-flex items-center gap-3">
+                    <span class="jdgm-all-reviews-rating" data-score="5" aria-label="ocena klientów" tabindex="0" role="img"></span>
+                    <span class="jdgm-carousel-number-of-reviews text-sm text-stone-400" data-number-of-reviews="0">Ładuję opinie...</span>
+                </span>
+            </div>
+            <div id="jdgm-carousel-items" class="jdgm-carousel mt-8"></div>
+        </div>
         <div id="testimonials-grid" class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- Testimonials will be inserted here -->
         </div>
@@ -383,6 +393,23 @@
             alert(`Dodano "${productName}" do koszyka!`);
         }
 
+            // Load Judge.me Reviews Carousel widget
+            function loadJudgeCarousel() {
+                const carouselRoot = document.getElementById('jdgm-reviews-carousel');
+                if (!carouselRoot) return;
+
+                const shopDomain = (config && config.shopify && config.shopify.store_domain)
+                    ? config.shopify.store_domain
+                    : 'epir-art-silver-jewellery.myshopify.com';
+
+                const script = document.createElement('script');
+                script.src = 'https://cdn.judge.me/widget.js';
+                script.async = true;
+                script.setAttribute('data-jm-shop', shopDomain);
+                script.setAttribute('data-jm-widget', 'reviews_carousel');
+                document.body.appendChild(script);
+            }
+
         // Update page metadata
         function updateMetadata() {
             document.getElementById('page-title').textContent = config.site.title;
@@ -409,6 +436,7 @@
                 renderTrust();
                 renderProducts();
                 renderTestimonials();
+                loadJudgeCarousel();
                 renderFAQ();
                 renderFinalCTA();
 
