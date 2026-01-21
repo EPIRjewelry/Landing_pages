@@ -1,0 +1,29 @@
+/* Brand color variables for EPIR Art Jewellery */
+:root {
+  /* Core brand */
+  --color-brand-green: #3C5629;
+  --color-accent-gold: #D4AF37;
+  --color-white: #FFFFFF;
+  --color-bg: #F9F7F4;
+  --color-light-grey: #F5F5F5;
+  --color-light-text: #F3F3F3;
+  --color-subtext-grey: #C9C9C9;
+  --color-dark-grey: #4B4B4B;
+  --color-black-text: #222222;
+
+  /* Product palette (examples) */
+  --color-prod-black: #000000;
+  --color-prod-red: #FF0000;
+  --color-prod-purple: #6A0DAD;
+  --color-prod-blue: #1E90FF;
+  --color-prod-pink: #FFC0CB;
+  --color-prod-silver: #C0C0C0;
+  --color-prod-gold: #D4AF37;
+  --color-prod-yellow: #FFD700;
+}
+
+/* Utility classes (optional) */
+.bg-brand-green { background-color: var(--color-brand-green); }
+.text-brand-green { color: var(--color-brand-green); }
+.text-accent-gold { color: var(--color-accent-gold); }
+.bg-accent-gold { background-color: var(--color-accent-gold); }
