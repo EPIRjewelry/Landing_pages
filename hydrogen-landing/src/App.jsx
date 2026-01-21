@@ -23,7 +23,7 @@ const App = () => {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
-    <div className="font-sans text-gray-800 bg-[#F9F9F7] min-h-screen flex flex-col">
+    <div className="font-sans text-gray-800 bg-bg-default min-h-screen flex flex-col">
       
       {/* --- HEADER --- */}
       <header 
@@ -34,7 +34,7 @@ const App = () => {
         <div className="container mx-auto px-6 flex justify-between items-center">
           {/* Logo */}
           <a href="#" className="group">
-            <h1 className={`text-2xl font-serif font-bold tracking-widest transition-colors ${scrolled ? 'text-[#1A2F23]' : 'text-white'}`}>
+            <h1 className={`text-2xl font-serif font-bold tracking-widest transition-colors ${scrolled ? 'text-brand-green' : 'text-white'}`}>
               EPIR
             </h1>
             <span className={`block text-[0.65rem] font-sans tracking-[0.2em] font-light mt-1 transition-colors ${scrolled ? 'text-gray-500' : 'text-gray-300'}`}>
@@ -44,16 +44,16 @@ const App = () => {
 
           {/* Desktop Nav */}
           <nav className={`hidden md:flex space-x-8 items-center text-sm uppercase tracking-widest ${scrolled ? 'text-gray-800' : 'text-white'}`}>
-            <a href="#kolekcje" className="hover:text-[#D4AF37] transition-colors">Kolekcje</a>
-            <a href="#bespoke" className="hover:text-[#D4AF37] transition-colors">Bespoke</a>
-            <a href="#o-nas" className="hover:text-[#D4AF37] transition-colors">O Pracowni</a>
+            <a href="#kolekcje" className="hover:text-accent-gold transition-colors">Kolekcje</a>
+            <a href="#bespoke" className="hover:text-accent-gold transition-colors">Bespoke</a>
+            <a href="#o-nas" className="hover:text-accent-gold transition-colors">O Pracowni</a>
             
             <a 
               href="#kontakt" 
               className={`border px-6 py-2 transition-all duration-300 ${
                 scrolled 
-                  ? 'border-[#1A2F23] hover:bg-[#1A2F23] hover:text-white' 
-                  : 'border-white hover:bg-white hover:text-[#1A2F23]'
+                    ? 'border-brand-green hover:bg-brand-green hover:text-white' 
+                      : 'border-white hover:bg-white hover:text-brand-green'
               }`}
             >
               Umów spotkanie
@@ -61,7 +61,7 @@ const App = () => {
           </nav>
 
           {/* Mobile Menu Button */}
-          <button onClick={toggleMenu} className={`md:hidden ${scrolled ? 'text-[#1A2F23]' : 'text-white'}`}>
+          <button onClick={toggleMenu} className={`md:hidden ${scrolled ? 'text-brand-green' : 'text-white'}`}>
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -69,10 +69,10 @@ const App = () => {
         {/* Mobile Menu Overlay */}
         {isMenuOpen && (
           <div className="absolute top-full left-0 w-full bg-white shadow-lg py-8 px-6 flex flex-col space-y-4 md:hidden text-center">
-            <a href="#kolekcje" onClick={toggleMenu} className="text-[#1A2F23] uppercase tracking-widest hover:text-[#D4AF37]">Kolekcje</a>
-            <a href="#bespoke" onClick={toggleMenu} className="text-[#1A2F23] uppercase tracking-widest hover:text-[#D4AF37]">Bespoke</a>
-            <a href="#o-nas" onClick={toggleMenu} className="text-[#1A2F23] uppercase tracking-widest hover:text-[#D4AF37]">O Pracowni</a>
-            <a href="#kontakt" onClick={toggleMenu} className="bg-[#1A2F23] text-white py-3 uppercase tracking-widest">Umów spotkanie</a>
+            <a href="#kolekcje" onClick={toggleMenu} className="text-brand-green uppercase tracking-widest hover:text-accent-gold">Kolekcje</a>
+            <a href="#bespoke" onClick={toggleMenu} className="text-brand-green uppercase tracking-widest hover:text-accent-gold">Bespoke</a>
+            <a href="#o-nas" onClick={toggleMenu} className="text-brand-green uppercase tracking-widest hover:text-accent-gold">O Pracowni</a>
+            <a href="#kontakt" onClick={toggleMenu} className="bg-brand-green text-white py-3 uppercase tracking-widest">Umów spotkanie</a>
           </div>
         )}
       </header>
@@ -87,11 +87,11 @@ const App = () => {
             className="w-full h-full object-cover"
           />
           {/* Overlay for readability */}
-          <div className="absolute inset-0 bg-[#1A2F23]/40"></div>
+          <div className="absolute inset-0 bg-brand-green/40"></div>
         </div>
 
         <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto mt-16 animate-fade-in-up">
-          <h2 className="text-xs md:text-sm uppercase tracking-[0.3em] mb-6 text-[#F3E5AB]">
+          <h2 className="text-xs md:text-sm uppercase tracking-[0.3em] mb-6 text-accent-pale">
             Wrocławska Pracownia Jubilerska
           </h2>
           <h1 className="text-5xl md:text-7xl font-serif mb-8 leading-tight">
@@ -103,10 +103,10 @@ const App = () => {
             Tworzona ręcznie i cyfrowo – specjalnie dla Ciebie.
           </p>
           <div className="flex flex-col md:flex-row gap-6 justify-center">
-            <a href="#kolekcje" className="bg-[#D4AF37] text-[#1A2F23] px-10 py-4 text-sm uppercase tracking-widest font-bold hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+            <a href="#kolekcje" className="bg-accent-gold text-brand-green px-10 py-4 text-sm uppercase tracking-widest font-bold hover:bg-white transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
               Zobacz Kolekcje
             </a>
-            <a href="#bespoke" className="border border-white text-white px-10 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-[#1A2F23] transition-all duration-300">
+            <a href="#bespoke" className="border border-white text-white px-10 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-brand-green transition-all duration-300">
               Zaprojektuj Własny
             </a>
           </div>
@@ -126,16 +126,16 @@ const App = () => {
                 />
               </div>
               {/* Decorative accent */}
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-[#F3E5AB] -z-0 hidden md:block"></div>
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-accent-pale -z-0 hidden md:block"></div>
             </div>
             
             <div className="order-1 md:order-2">
-              <span className="text-[#D4AF37] text-xs uppercase tracking-[0.2em] font-bold mb-4 block">Filozofia Marki</span>
-              <h2 className="text-4xl md:text-5xl font-serif text-[#1A2F23] mb-8 leading-tight">
+              <span className="text-accent-gold text-xs uppercase tracking-[0.2em] font-bold mb-4 block">Filozofia Marki</span>
+              <h2 className="text-4xl md:text-5xl font-serif text-brand-green mb-8 leading-tight">
                 Tradycja spotyka <br/><span className="italic">Technologię</span>
               </h2>
               <p className="text-gray-600 mb-6 font-light leading-relaxed text-lg">
-                W EPIR nie wybieramy między starym a nowym. Łączymy je. Każdy projekt zaczyna się od wizji. Czasem jest to ręczne rzeźbienie w wosku jubilerskim, by oddać nieregularność natury w kolekcji <span className="font-serif italic text-[#1A2F23]">Gałązki</span>.
+                W EPIR nie wybieramy między starym a nowym. Łączymy je. Każdy projekt zaczyna się od wizji. Czasem jest to ręczne rzeźbienie w wosku jubilerskim, by oddać nieregularność natury w kolekcji <span className="font-serif italic text-brand-green">Gałązki</span>.
               </p>
               <p className="text-gray-600 mb-10 font-light leading-relaxed text-lg">
                 Innym razem wykorzystujemy zaawansowane modelowanie 3D, by osiągnąć perfekcyjną symetrię dla oprawy rzadkich szafirów czy turmalinów.
@@ -143,23 +143,23 @@ const App = () => {
               
               <ul className="space-y-6">
                 <li className="flex items-start">
-                  <Gem className="w-6 h-6 text-[#D4AF37] mr-4 mt-1" />
+                  <Gem className="w-6 h-6 text-accent-gold mr-4 mt-1" />
                   <div>
-                    <h4 className="font-serif text-[#1A2F23] text-lg">Gemmologia</h4>
+                    <h4 className="font-serif text-brand-green text-lg">Gemmologia</h4>
                     <p className="text-sm text-gray-500 font-light">Ekspercka selekcja unikalnych kamieni.</p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <Hammer className="w-6 h-6 text-[#D4AF37] mr-4 mt-1" />
+                  <Hammer className="w-6 h-6 text-accent-gold mr-4 mt-1" />
                   <div>
-                    <h4 className="font-serif text-[#1A2F23] text-lg">Rzemiosło</h4>
+                    <h4 className="font-serif text-brand-green text-lg">Rzemiosło</h4>
                     <p className="text-sm text-gray-500 font-light">Autorska pracownia we Wrocławiu.</p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <Fingerprint className="w-6 h-6 text-[#D4AF37] mr-4 mt-1" />
+                  <Fingerprint className="w-6 h-6 text-accent-gold mr-4 mt-1" />
                   <div>
-                    <h4 className="font-serif text-[#1A2F23] text-lg">Unikalność</h4>
+                    <h4 className="font-serif text-brand-green text-lg">Unikalność</h4>
                     <p className="text-sm text-gray-500 font-light">Projekty "Bespoke" na indywidualne zamówienie.</p>
                   </div>
                 </li>
@@ -170,7 +170,7 @@ const App = () => {
       </section>
 
       {/* --- COLLECTIONS --- */}
-      <section id="kolekcje" className="py-24 bg-[#1A2F23] text-white">
+      <section id="kolekcje" className="py-24 bg-brand-green text-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20">
             <h2 className="text-4xl md:text-6xl font-serif mb-6">Nasze Światy</h2>
@@ -190,11 +190,11 @@ const App = () => {
                  />
                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
               </div>
-              <h3 className="text-3xl font-serif text-[#D4AF37] mb-2 group-hover:translate-x-2 transition-transform">Gałązki</h3>
+              <h3 className="text-3xl font-serif text-accent-gold mb-2 group-hover:translate-x-2 transition-transform">Gałązki</h3>
               <p className="text-gray-400 font-light text-sm leading-relaxed mb-4">
                 Subtelne, splecione formy inspirowane leśnym poszyciem. Organiczna nieregularność dla romantycznych dusz.
               </p>
-              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-[#D4AF37] transition-colors">
+              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-accent-gold transition-colors">
                 Odkryj <ArrowRight className="w-4 h-4 ml-2" />
               </span>
             </div>
@@ -209,11 +209,11 @@ const App = () => {
                  />
                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
               </div>
-              <h3 className="text-3xl font-serif text-[#D4AF37] mb-2 group-hover:translate-x-2 transition-transform">Kora Drzew</h3>
+              <h3 className="text-3xl font-serif text-accent-gold mb-2 group-hover:translate-x-2 transition-transform">Kora Drzew</h3>
               <p className="text-gray-400 font-light text-sm leading-relaxed mb-4">
                 Surowe, męskie i damskie formy o unikalnej fakturze. Symbol trwałości, siły i naturalnego piękna.
               </p>
-              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-[#D4AF37] transition-colors">
+              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-accent-gold transition-colors">
                 Odkryj <ArrowRight className="w-4 h-4 ml-2" />
               </span>
             </div>
@@ -228,11 +228,11 @@ const App = () => {
                  />
                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
               </div>
-              <h3 className="text-3xl font-serif text-[#D4AF37] mb-2 group-hover:translate-x-2 transition-transform">Secesja & Kamienie</h3>
+              <h3 className="text-3xl font-serif text-accent-gold mb-2 group-hover:translate-x-2 transition-transform">Secesja & Kamienie</h3>
               <p className="text-gray-400 font-light text-sm leading-relaxed mb-4">
                 Płynne linie i feeria barw. Szmaragdy, Opale i Turmaliny w artystycznej, bogatej oprawie.
               </p>
-              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-[#D4AF37] transition-colors">
+              <span className="flex items-center text-xs uppercase tracking-widest text-white group-hover:text-accent-gold transition-colors">
                 Odkryj <ArrowRight className="w-4 h-4 ml-2" />
               </span>
             </div>
@@ -241,33 +241,33 @@ const App = () => {
       </section>
 
       {/* --- BESPOKE CTA --- */}
-      <section id="bespoke" className="py-24 bg-[#F3E5AB]/20 relative">
+      <section id="bespoke" className="py-24 bg-accent-pale/20 relative">
         <div className="container mx-auto px-6">
           <div className="bg-white p-12 md:p-20 shadow-xl flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#F3E5AB] rounded-full filter blur-3xl opacity-30 -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent-pale rounded-full filter blur-3xl opacity-30 -translate-y-1/2 translate-x-1/2"></div>
             
             <div className="w-full md:w-1/2">
-               <span className="text-[#D4AF37] text-xs uppercase tracking-[0.2em] font-bold mb-4 block">Usługa Bespoke</span>
-               <h2 className="text-4xl md:text-5xl font-serif text-[#1A2F23] mb-6">Biżuteria Marzeń</h2>
+               <span className="text-accent-gold text-xs uppercase tracking-[0.2em] font-bold mb-4 block">Usługa Bespoke</span>
+               <h2 className="text-4xl md:text-5xl font-serif text-brand-green mb-6">Biżuteria Marzeń</h2>
                <p className="text-gray-600 mb-8 font-light leading-relaxed text-lg">
                   Szukasz pierścionka zaręczynowego, który będzie tak unikalny jak Wasza miłość? W EPIR specjalizujemy się w projektach na indywidualne zamówienie.
                </p>
                <div className="flex flex-col gap-4">
                  <div className="flex items-center text-gray-700 font-light">
-                    <span className="w-2 h-2 bg-[#1A2F23] rounded-full mr-4"></span>
+                    <span className="w-2 h-2 bg-brand-green rounded-full mr-4"></span>
                     Spotkanie w pracowni lub online
                  </div>
                  <div className="flex items-center text-gray-700 font-light">
-                    <span className="w-2 h-2 bg-[#1A2F23] rounded-full mr-4"></span>
+                    <span className="w-2 h-2 bg-brand-green rounded-full mr-4"></span>
                     Wybór kruszcu i unikalnego kamienia
                  </div>
                  <div className="flex items-center text-gray-700 font-light">
-                    <span className="w-2 h-2 bg-[#1A2F23] rounded-full mr-4"></span>
+                    <span className="w-2 h-2 bg-brand-green rounded-full mr-4"></span>
                     Projekt 3D przed realizacją
                  </div>
                </div>
                <div className="mt-10">
-                 <a href="#kontakt" className="inline-block bg-[#1A2F23] text-white px-8 py-4 text-sm uppercase tracking-widest hover:bg-[#D4AF37] transition-colors duration-300">
+                 <a href="#kontakt" className="inline-block bg-brand-green text-white px-8 py-4 text-sm uppercase tracking-widest hover:bg-accent-gold transition-colors duration-300">
                    Umów darmową konsultację
                  </a>
                </div>
@@ -282,7 +282,7 @@ const App = () => {
       </section>
 
       {/* --- FOOTER --- */}
-      <footer id="kontakt" className="bg-[#2C2C2C] text-white pt-20 pb-10 mt-auto">
+      <footer id="kontakt" className="bg-footer-dark text-white pt-20 pb-10 mt-auto">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 border-b border-white/10 pb-12">
             <div className="md:col-span-1">
@@ -291,31 +291,31 @@ const App = () => {
                 Pracownia biżuterii artystycznej łącząca pasję, rzemiosło i nowoczesną technologię.
               </p>
               <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-[#D4AF37] transition-colors"><Instagram size={20} /></a>
-                <a href="#" className="text-gray-400 hover:text-[#D4AF37] transition-colors"><Facebook size={20} /></a>
-                <a href="#" className="text-gray-400 hover:text-[#D4AF37] transition-colors"><Twitter size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-accent-gold transition-colors"><Instagram size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-accent-gold transition-colors"><Facebook size={20} /></a>
+                <a href="#" className="text-gray-400 hover:text-accent-gold transition-colors"><Twitter size={20} /></a>
               </div>
             </div>
 
             <div>
-              <h4 className="text-[#D4AF37] text-xs uppercase tracking-widest mb-6">Kontakt</h4>
+              <h4 className="text-accent-gold text-xs uppercase tracking-widest mb-6">Kontakt</h4>
               <p className="text-gray-300 mb-2">Pracownia EPIR</p>
               <p className="text-gray-400 text-sm mb-4">ul. Przykładowa 12/4<br/>50-001 Wrocław</p>
-              <p className="text-gray-400 text-sm"><span className="text-[#D4AF37]">Email:</span> kontakt@epir.pl</p>
+              <p className="text-gray-400 text-sm"><span className="text-accent-gold">Email:</span> kontakt@epir.pl</p>
             </div>
 
             <div>
-              <h4 className="text-[#D4AF37] text-xs uppercase tracking-widest mb-6">Odkryj</h4>
+              <h4 className="text-accent-gold text-xs uppercase tracking-widest mb-6">Odkryj</h4>
               <ul className="space-y-3 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-[#D4AF37] transition-colors">Sklep Online</a></li>
-                <li><a href="#" className="hover:text-[#D4AF37] transition-colors">Kamienie Szlachetne</a></li>
-                <li><a href="#" className="hover:text-[#D4AF37] transition-colors">Tabela rozmiarów</a></li>
-                <li><a href="#" className="hover:text-[#D4AF37] transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-accent-gold transition-colors">Sklep Online</a></li>
+                <li><a href="#" className="hover:text-accent-gold transition-colors">Kamienie Szlachetne</a></li>
+                <li><a href="#" className="hover:text-accent-gold transition-colors">Tabela rozmiarów</a></li>
+                <li><a href="#" className="hover:text-accent-gold transition-colors">Blog</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-[#D4AF37] text-xs uppercase tracking-widest mb-6">Newsletter</h4>
+              <h4 className="text-accent-gold text-xs uppercase tracking-widest mb-6">Newsletter</h4>
               <p className="text-gray-400 text-sm font-light mb-4">
                 Nowe kolekcje i unikalne kamienie prosto na Twój email.
               </p>
@@ -323,9 +323,9 @@ const App = () => {
                 <input 
                   type="email" 
                   placeholder="Twój email" 
-                  className="bg-white/5 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
+                  className="bg-white/5 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-accent-gold transition-colors"
                 />
-                <button className="bg-[#D4AF37] text-[#1A2F23] px-4 py-2 text-sm uppercase tracking-widest font-bold hover:bg-white transition-colors">
+                <button className="bg-accent-gold text-brand-green px-4 py-2 text-sm uppercase tracking-widest font-bold hover:bg-white transition-colors">
                   Zapisz się
                 </button>
               </form>

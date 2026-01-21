@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 
 const SHOPIFY_DOMAIN = import.meta.env.VITE_STORE_DOMAIN || 'epirbizuteria.pl'
-const STOREFRONT_TOKEN = import.meta.env.VITE_STOREFRONT_TOKEN || 'd69177fcd5f76b73e5ff203917dff36a'
+const STOREFRONT_TOKEN = import.meta.env.VITE_STOREFRONT_TOKEN
+if (!STOREFRONT_TOKEN) console.warn('VITE_STOREFRONT_TOKEN is not set — Storefront API requests may fail')
 const GRAPHQL_URL = `https://${SHOPIFY_DOMAIN}/api/2023-10/graphql.json`
 
 function ProductModal({ product, onClose }) {
@@ -54,7 +55,7 @@ function ProductModal({ product, onClose }) {
                 height: 64,
                 objectFit: 'cover',
                 borderRadius: 12,
-                border: idx === index ? '2px solid #d4af37' : '1px solid #ccc',
+                border: idx === index ? '2px solid var(--color-accent-gold)' : '1px solid #ccc',
                 cursor: 'pointer'
               }}
               onClick={() => setIndex(idx)}

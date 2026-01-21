@@ -5,6 +5,8 @@ module.exports = {
       colors: {
         'brand-green': 'var(--color-brand-green)',
         'accent-gold': 'var(--color-accent-gold)',
+        'accent-pale': '#F3E5AB',
+        'footer-dark': '#2C2C2C',
         'bg-default': 'var(--color-bg)',
         'light-grey': 'var(--color-light-grey)',
         'dark-grey': 'var(--color-dark-grey)',
