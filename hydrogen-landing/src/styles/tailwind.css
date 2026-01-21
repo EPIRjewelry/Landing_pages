@@ -1,0 +1,9 @@
+@import './brand-colors.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: small helpers to map colors to classes if needed */
+.bg-brand { background-color: var(--color-bg); }
+.text-accent { color: var(--color-accent-gold); }
