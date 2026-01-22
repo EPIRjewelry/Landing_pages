@@ -1,0 +1,28 @@
+{
+  "colors": {
+    "brand": {
+      "green": "#3C5629",
+      "lightGrey": "#F5F5F5",
+      "lightText": "#F3F3F3",
+      "subtextGrey": "#C9C9C9",
+      "white": "#FFFFFF",
+      "darkGrey": "#4B4B4B",
+      "black": "#222222",
+      "accentGold": "#D4AF37",
+      "background": "#F9F7F4"
+    },
+    "products": {
+      "black": "#000000",
+      "red": "#FF0000",
+      "purple": "#6A0DAD",
+      "blue": "#1E90FF",
+      "pink": "#FFC0CB",
+      "silver": "#C0C0C0",
+      "green": "#3C5629",
+      "gold": "#D4AF37",
+      "yellow": "#FFD700"
+    }
+  },
+  "logo": "/assets/logo.svg",
+  "font": "Cormorant Garamond"
+}
