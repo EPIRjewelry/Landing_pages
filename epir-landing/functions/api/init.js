@@ -128,11 +128,7 @@ export async function onRequestPost(context) {
           },
           "background_image": "https://images.unsplash.com/photo-1617038220319-276d3cfab638?q=80&w=2574"
         }
-      },
-      "shopify": {
-        "storefront_access_token": "d69177fcd5f76b73e5ff203917dff36a",
-        "store_domain": "bizuteria.epirbizuteria.pl"
-      }
+        }
     };
 
     // Zapisz do KV

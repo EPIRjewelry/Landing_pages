@@ -18,6 +18,8 @@
     
     <!-- Shopify Buy SDK -->
     <script src="https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js"></script>
+    <!-- Loader for Shopify Rings (calls server-side /api/shopify-rings) -->
+    <script src="/shopify-rings.js"></script>
     
     <script>
         tailwind.config = {
@@ -382,15 +384,88 @@
             console.log('✅ Shopify initialized');
         }
 
-        // Add to Cart (placeholder - implement with Shopify)
-        function addToCart(productId, productName) {
+        // Add to Cart — server-side checkout flow
+        async function addToCart(productId, productName) {
             if (!productId) {
                 alert(`Produkt "${productName}" zostanie wkrótce dostępny!`);
                 return;
             }
 
-            // Implement Shopify cart logic here
-            alert(`Dodano "${productName}" do koszyka!`);
+            let variantId = productId;
+
+            // If passed ID is a Product (not a ProductVariant), try to resolve first variant
+            try {
+                if (!String(productId).includes('ProductVariant')) {
+                    // Try find in already loaded config
+                    if (config && config.sections && config.sections.products && Array.isArray(config.sections.products.items)) {
+                        const found = config.sections.products.items.find(p => p.shopify_product_id === productId);
+                        if (found && found.variants && found.variants.length) {
+                            variantId = found.variants[0].id;
+                        }
+                    }
+
+                    // If still not found, fetch server-side products
+                    if (!variantId || !String(variantId).includes('ProductVariant')) {
+                        const r = await fetch('/api/shopify-rings');
+                        if (r.ok) {
+                            const j = await r.json();
+                            const found2 = (j.products || []).find(p => p.shopify_product_id === productId);
+                            if (found2 && found2.variants && found2.variants.length) {
+                                variantId = found2.variants[0].id;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('Variant resolution failed', err);
+            }
+
+            // If we still don't have variantId, fallback to product page if available
+            if (!variantId || !String(variantId).includes('ProductVariant')) {
+                const prod = (config && config.sections && config.sections.products && config.sections.products.items)
+                    ? config.sections.products.items.find(p => p.shopify_product_id === productId)
+                    : null;
+                if (prod && prod.onlineStoreUrl) {
+                    window.location.href = prod.onlineStoreUrl;
+                    return;
+                }
+                alert(`Nie można dodać "${productName}" do koszyka. Proszę spróbować na stronie sklepu.`);
+                return;
+            }
+
+            // Create checkout via server endpoint
+            try {
+                const resp = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ variantId: variantId, quantity: 1 })
+                });
+
+                if (!resp.ok) {
+                    console.warn('Checkout creation failed', resp.status);
+                    // fallback to product page
+                    const prod = (config && config.sections && config.sections.products && config.sections.products.items)
+                        ? config.sections.products.items.find(p => p.shopify_product_id === productId)
+                        : null;
+                    if (prod && prod.onlineStoreUrl) {
+                        window.location.href = prod.onlineStoreUrl;
+                        return;
+                    }
+                    alert('Nie udało się utworzyć checkoutu. Spróbuj ponownie później.');
+                    return;
+                }
+
+                const data = await resp.json();
+                if (data && data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                    return;
+                }
+
+                alert('Nie otrzymano URL do płatności. Spróbuj ponownie.');
+            } catch (err) {
+                console.error('Checkout error', err);
+                alert('Błąd tworzenia zamówienia. Spróbuj ponownie.');
+            }
         }
 
             // Load Judge.me Reviews Carousel widget
@@ -442,6 +517,15 @@
 
                 // Initialize Shopify
                 initShopify();
+
+                // If server-side loader is available, fetch rings from /api/shopify-rings
+                if (typeof loadShopifyRings === 'function') {
+                    try {
+                        await loadShopifyRings();
+                    } catch (e) {
+                        console.warn('⚠️ loadShopifyRings failed', e);
+                    }
+                }
 
                 // Hide loading screen
                 document.getElementById('loading').style.display = 'none';

@@ -246,6 +246,23 @@ Landing page automatycznie śledzi:
 
 Kliknij "Dodaj do koszyka" na produkcie - powinien działać Shopify checkout.
 
+### Sekrety i bezpieczenstwo (Cloudflare Pages)
+
+Zalecamy nie przechowywać Storefront tokenów w repo. Utwórz sekrety Pages / wrangler secrets:
+
+```powershell
+# Ustaw token storefront (wartość z Shopify)
+wrangler secret put SHOPIFY_STOREFRONT_TOKEN
+
+# Ustaw prosty token admina do zabezpieczenia /api/save
+wrangler secret put ADMIN_API_TOKEN
+
+# (opcjonalnie) ustaw domenę sklepu jako sekret lub użyj configu
+wrangler secret put SHOP_DOMAIN
+```
+
+Po ustawieniu sekretów, funkcja serwerowa `/api/shopify-rings` użyje `SHOPIFY_STOREFRONT_TOKEN` i `SHOP_DOMAIN` z env. Endpoint `/api/save` wymaga nagłówka `Authorization: Bearer <ADMIN_API_TOKEN>`.
+
 ---
 
 ## 🔄 Aktualizacja i Deployment

@@ -12,19 +12,19 @@ export async function onRequestPost(context) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion',
     'Content-Type': 'application/json'
   };
 
   try {
-    // TODO: Dodać weryfikację Cloudflare Access JWT
-    // const accessJWT = request.headers.get('Cf-Access-Jwt-Assertion');
-    // if (!accessJWT) {
-    //   return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-    //     status: 401,
-    //     headers: corsHeaders
-    //   });
-    // }
+    // Required: Cloudflare Access JWT assertion
+    const accessJwt = request.headers.get('Cf-Access-Jwt-Assertion');
+    if (!accessJwt) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: corsHeaders
+      });
+    }
 
     // Pobierz dane z request body
     const config = await request.json();
@@ -38,6 +38,12 @@ export async function onRequestPost(context) {
         status: 400,
         headers: corsHeaders
       });
+    }
+
+    // Nie zapisuj sekretów Shopify do KV
+    if (config.shopify) {
+      delete config.shopify.storefront_access_token;
+      delete config.shopify.store_domain;
     }
 
     // Zapisz do KV
@@ -80,7 +86,7 @@ export async function onRequestOptions() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion'
     }
   });
 }

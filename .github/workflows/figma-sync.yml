@@ -1,0 +1,44 @@
+name: Figma Sync
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 2 * * *' # daily at 02:00 UTC (example)
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps
+        run: npm ci
+        working-directory: ./hydrogen-landing || .
+
+      - name: Run Figma tokens (dry if secret missing)
+        env:
+          FIGMA_TOKEN: ${{ secrets.FIGMA_TOKEN }}
+          FIGMA_FILE_KEY: ${{ secrets.FIGMA_FILE_KEY }}
+        run: |
+          node ../../scripts/figma/fetch-tokens.js || true
+        working-directory: ./hydrogen-landing
+
+      - name: Run Figma assets
+        env:
+          FIGMA_TOKEN: ${{ secrets.FIGMA_TOKEN }}
+          FIGMA_FILE_KEY: ${{ secrets.FIGMA_FILE_KEY }}
+        run: |
+          node ../../scripts/figma/fetch-assets.js || true
+        working-directory: ./hydrogen-landing
+
+      - name: Upload generated as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: figma-generated
+          path: generated/

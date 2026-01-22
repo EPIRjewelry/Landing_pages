@@ -1,0 +1,119 @@
+{
+  "site": {
+    "title": "EPIR | Pierścionki Zaręczynowe",
+    "description": "Wyjątkowe pierścionki zaręczynowe. Ręcznie wykonane z najwyższej jakości materiałów.",
+    "ga4_id": "G-XXXXXXXXXX"
+  },
+  "sections": {
+    "about": {
+      "active": true,
+      "title": "O marce",
+      "subtitle": "Rękodzieło spotyka technologię",
+      "text": "EPIR to pracownia jubilerska łącząca organiczną estetykę z cyfrową precyzją. Projektujemy w 3D, drukujemy modele żywicą i ręcznie wykańczamy każdy element. Naszą misją jest tworzenie biżuterii na całe życie.",
+      "photos": [
+        "/images/about/founder-portrait.jpg",
+        "/images/about/workshop-1.jpg",
+        "/images/about/atelier-team.jpg"
+      ]
+    },
+    "hero": {
+      "active": true,
+      "title": "Pierścionki które",
+      "subtitle": "opowiadają historię",
+      "description": "Odkryj kolekcję pierścionków zaręczynowych, każdy wykonany ręcznie przez polskich mistrzów złotnictwa.",
+      "cta_text": "Odkryj Kolekcję",
+      "cta_link": "#products",
+      "background_image": "/images/hero-rings.jpg",
+      "overlay_opacity": 0.5
+    },
+    "products": {
+      "active": true,
+      "title": "Nasza Kolekcja",
+      "subtitle": "// UNIKATY EPIR",
+      "items": [
+        {
+          "id": 1,
+          "shopify_product_id": "",
+          "name": "Solitaire Classic",
+          "description": "Klasyczny solitaire z diamentem 1ct w oprawie z białego złota Au585.",
+          "price": "12,500 PLN",
+          "image": "/images/rings/solitaire-classic.jpg",
+          "cta_text": "Zobacz w sklepie"
+        },
+        {
+          "id": 2,
+          "shopify_product_id": "",
+          "name": "Organic Moissanite",
+          "description": "Nowoczesna oprawa organiczna z moissanitem 2ct - maksymalny blask.",
+          "price": "8,900 PLN",
+          "image": "/images/rings/organic-moissanite.jpg",
+          "cta_text": "Zobacz w sklepie"
+        }
+      ]
+    },
+    "trust": {
+      "active": true,
+      "title": "Gwarancja Jakości",
+      "badges": [
+        { "icon": "shield-check", "title": "100% Au585", "description": "Certyfikowane złoto próby 585" },
+        { "icon": "gem", "title": "Certyfikaty GIA", "description": "Kamienie z międzynarodowymi certyfikatami" },
+        { "icon": "truck", "title": "Darmowa Dostawa", "description": "Bezpieczna przesyłka kurierem w całej Polsce" }
+      ]
+    },
+    "testimonials": {
+      "active": true,
+      "title": "Opinie Klientów",
+      "subtitle": "// CO MÓWIĄ O NAS",
+      "items": [
+        {
+          "id": 1,
+          "name": "Anna K.",
+          "location": "Warszawa",
+          "rating": 5,
+          "text": "Pierścionek zaręczynowy od EPIR to arcydzieło. Jakość wykonania i dbałość o detale są niesamowite.",
+          "image": "/images/testimonials/anna-k.jpg",
+          "product_image": "/images/testimonials/ring-anna.jpg"
+        },
+        {
+          "id": 2,
+          "name": "Michał P.",
+          "location": "Kraków",
+          "rating": 5,
+          "text": "Obsługa na najwyższym poziomie. Pomoc w doborze rozmiaru i kamienia była bezcenna.",
+          "image": "/images/testimonials/michal-p.jpg",
+          "product_image": "/images/testimonials/ring-michal.jpg"
+        },
+        {
+          "id": 3,
+          "name": "Karolina M.",
+          "location": "Gdańsk",
+          "rating": 5,
+          "text": "Wymarzone pierścionki ślubne! Zdecydowaliśmy się na personalizację i nie żałujemy.",
+          "image": "/images/testimonials/karolina-m.jpg",
+          "product_image": "/images/testimonials/ring-karolina.jpg"
+        }
+      ]
+    },
+    "faq": {
+      "active": true,
+      "title": "Najczęściej Zadawane Pytania",
+      "subtitle": "// FAQ",
+      "items": [
+        { "id": 1, "question": "Jak dobrać rozmiar?", "answer": "Oferujemy darmowy zestaw do pomiaru rozmiaru oraz konsultacje w showroomie." },
+        { "id": 2, "question": "Czas realizacji?", "answer": "5-7 dni dla gotowych modeli, 3-4 tygodnie dla projektów personalizowanych." }
+      ]
+    },
+    "cta_final": {
+      "active": true,
+      "title": "Gotowy na Początek Waszej Historii?",
+      "description": "Umów się na bezpłatną konsultację lub zamów online z darmową dostawą i zwrotem.",
+      "primary_cta": { "text": "Umów Konsultację", "link": "#contact" },
+      "secondary_cta": { "text": "Zobacz Kolekcję", "link": "https://epirbizuteria.pl/collections/pierscionki" },
+      "background_image": "/images/cta-background.jpg"
+    }
+  },
+  "shopify": {
+    "storefront_access_token": "",
+    "store_domain": "bizuteria.epirbizuteria.pl"
+  }
+}

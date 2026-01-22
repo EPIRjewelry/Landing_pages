@@ -1,0 +1,33 @@
+name: Deploy to Cloudflare Pages (manual)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps
+        run: |
+          cd hydrogen-landing
+          npm ci
+
+      - name: Build Hydrogen
+        run: |
+          cd hydrogen-landing
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          directory: ./hydrogen-landing/dist
