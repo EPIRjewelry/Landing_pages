@@ -1,0 +1,914 @@
+EPIR Art Jewellery: Plan Wdrożenia Architektury Kolekcji
+Data-Driven Taxonomy - Dokument Implementacyjny v1.0
+
+Data utworzenia: 25 stycznia 2026
+Autorzy: Zespół EPIR (Programista + Grafik)
+Czas realizacji: 10 tygodni (25 stycznia - 5 kwietnia 2026)
+Status: Ready to implement
+SPIS TREŚCI
+
+    Wprowadzenie - Filozofia Systemu
+    Architektura Danych
+    Plan Wdrożenia - 5 Faz
+    Kod - Metafields Definitions
+    Kod - Metaobjects Definitions
+    Kod - Liquid Templates
+    Brief dla Grafika
+    Checklisty i Timeline
+
+<a name="filozofia"></a>
+1. WPROWADZENIE - FILOZOFIA SYSTEMU
+Problem do rozwiązania:
+
+    ❌ 32 szablony kolekcji (collection.json, collection.kolczyki.json, collection.van-gogh.json...)
+    ❌ Ręczne tworzenie każdego szablonu
+    ❌ Brak skalowalności
+    ❌ Grafik nie może edytować bez programisty
+
+Rozwiązanie:
+
+    ✅ 1 uniwersalny szablon
+        dynamiczne dane
+    ✅ Metafields dla atrybutów produktów
+    ✅ Metaobjects dla contentu kolekcji
+    ✅ Grafik edytuje przez admin panel
+
+Formuła:
+
+Produkt = [Kruszec] + [Kamień] + [Kolekcja] + [Historia] + [Certyfikat]
+Kolekcja = [Hero Image] + [Video] + [Philosophy] + [Texture] + [Color]
+
+<a name="architektura"></a>
+2. ARCHITEKTURA DANYCH
+2.1 Macierz Kolekcji EPIR (4 Wymiary)
+
+WYMIAR A: Kolekcje Autorskie (Narracyjne)
+├── Van Gogh
+├── Aletheia
+├── Żywioły
+├── Organic Flows (Secesyjna)
+└── Artifacts
+
+WYMIAR B: Typologia (Funkcjonalne)
+├── Pierścionki
+├── Kolczyki
+├── Naszyjniki & Wisiory
+├── Bransoletki
+└── Sygnety
+
+WYMIAR C: Litologia (Kamienie)
+├── Opalarium
+├── Ametysty
+├── Akwamaryny
+├── Granaty
+├── Szmaragdy
+├── Topazy
+├── Turmaliny
+└── Turkusy
+
+WYMIAR D: Status (Cykl Życia)
+├── Dostępne
+├── Archiwum (sprzedane, ale widoczne)
+└── VIP (hidden_gem)
+
+WYMIAR E: Okazje
+├── Zaręczynowe
+├── Ślubne
+├── Rocznicowe
+└── Codzienna
+
+2.2 System Tagów
+
+# Prefix: collection-
+collection-van-gogh
+collection-aletheia
+collection-zywoly
+
+# Prefix: type-
+type-pierscionek
+type-kolczyki
+type-naszyjnik
+type-bransoletka
+
+# Prefix: stone-
+stone-opal
+stone-ametyst
+stone-akwamaryn
+
+# Prefix: material-
+material-srebro
+material-zloto
+material-pozlacane
+
+# Prefix: occasion-
+occasion-zareczynowy
+occasion-slubny
+occasion-rocznica
+
+# Prefix: status-
+status-archiwum
+status-vip
+
+<a name="plan"></a>
+3. PLAN WDROŻENIA - 5 FAZ
+FAZA 1: Fundament (Tydzień 1-3)
+
+Cel: Uporządkować chaos, zbudować podstawową strukturę
+
+Tydzień 1:
+
+    Audit kolekcji - usunięcie duplikatów
+    Definicja systemu tagów
+    Bulk tagging produktów (Matrixify)
+
+Tydzień 2:
+
+    Stworzenie Smart Collections - Wymiar B (Typologia)
+    Stworzenie Smart Collections - Wymiar C (Litologia)
+
+Tydzień 3:
+
+    Uporządkowanie nawigacji (menu)
+    Cleanup szablonów (32 → 3)
+
+FAZA 2: Metafields - Atrybuty Produktów (Tydzień 4-5)
+
+Cel: Strukturalne dane produktów
+
+Tydzień 4:
+
+    Stworzenie definicji metafields (Settings > Custom Data)
+    Przygotowanie CSV template
+
+Tydzień 5:
+
+    Bulk fill metafields (Matrixify)
+    Weryfikacja danych
+
+FAZA 3: Metaobjects (Tydzień 6-8)
+
+Cel: Dynamiczny content dla kolekcji
+
+Tydzień 6:
+
+    Stworzenie stone_profile definition
+    Stworzenie entries dla TOP 5 kamieni
+
+Tydzień 7:
+
+    Stworzenie collection_enhanced definition
+    Stworzenie entries dla kolekcji autorskich
+
+Tydzień 8:
+
+    Podłączenie metaobjects do produktów
+    Podłączenie metaobjects do kolekcji
+
+FAZA 4: Template Integration (Tydzień 9)
+
+Cel: Dynamiczne szablony
+
+    Edycja collection.json (dynamic hero)
+    Edycja product-template.liquid (metafields display)
+    Breadcrumbs (canonical_parent)
+    Testing na duplicate theme
+
+FAZA 5: Cross-sell + Polish (Tydzień 10)
+
+Cel: Shop the Look + finalizacja
+
+    set_reference metafield
+    "Complete the Set" snippet
+    Status "Archiwum" logic
+    Final testing + launch
+
+<a name="metafields-code"></a>
+4. KOD - METAFIELDS DEFINITIONS
+4.1 Atrybuty Fizyczne Produktów
+
+Lokalizacja: Settings > Custom Data > Products > Add definition
+A. Główny Kamień
+
+{
+  "name": "Główny Kamień",
+  "namespace": "custom",
+  "key": "main_stone",
+  "description": "Lista kamieni w produkcie (np. Opal, Diament)",
+  "type": "list.single_line_text_field",
+  "validations": {
+    "max_items": 3
+  },
+  "options": {
+    "pin_to_resource": true,
+    "storefront_access": true
+  }
+}
+
+Jak wypełnić:
+
+    Produkt z opalem: ["Opal"]
+    Produkt z opalem i diamentem: ["Opal", "Diament"]
+
+B. Kruszec / Metal
+
+{
+  "name": "Kruszec / Metal",
+  "namespace": "custom",
+  "key": "metal_type",
+  "description": "Typ metalu (np. Srebro 925, Złoto 585)",
+  "type": "single_line_text_field",
+  "validations": {
+    "choices": [
+      "Srebro 925",
+      "Srebro Oksydowane",
+      "Srebro Pozłacane",
+      "Złoto 585",
+      "Złoto 750"
+    ]
+  },
+  "options": {
+    "pin_to_resource": true,
+    "storefront_access": true
+  }
+}
+
+C. Masa Kamienia (karaty)
+
+{
+  "name": "Masa Kamienia (ct)",
+  "namespace": "custom",
+  "key": "carat_weight",
+  "description": "Waga kamienia w karatach",
+  "type": "number_decimal",
+  "validations": {
+    "min": 0.01,
+    "max": 50.0
+  },
+  "options": {
+    "pin_to_resource": true,
+    "storefront_access": true
+  }
+}
+
+D. Rozmiar (dla unikatów)
+
+{
+  "name": "Rozmiar",
+  "namespace": "custom",
+  "key": "size_text",
+  "description": "Rozmiar dla unikatów bez wariantów (np. PL 14 / US 7)",
+  "type": "single_line_text_field",
+  "validations": {
+    "max_length": 50
+  },
+  "options": {
+    "pin_to_resource": true,
+    "storefront_access": true
+  }
+}
+
+E. Pochodzenie Kamienia
+
+{
+  "name": "Pochodzenie Kamienia",
+  "namespace": "custom",
+  "key": "origin",
+  "description": "Miejsce pochodzenia (np. Australia, Coober Pedy)",
+  "type": "single_line_text_field",
+  "validations": {
+    "max_length": 100
+  },
+  "options": {
+    "pin_to_resource": true,
+    "storefront_access": true
+  }
+}
+
+4.2 Atrybuty Relacyjne
+F. Kolekcja Nadrzędna (Canonical Parent)
+
+{
+  "name": "Główna Kolekcja (Canonical)",
+  "namespace": "custom",
+  "key": "canonical_parent",
+  "description": "Priorytetowa kolekcja dla breadcrumbs i SEO",
+  "type": "collection_reference",
+  "options": {
+    "pin_to_resource": true
+  }
+}
+
+Zastosowanie: Breadcrumbs pokazują tę kolekcję zamiast losowej.
+G. ID Zestawu (Shop the Look)
+
+{
+  "name": "Kod Zestawu",
+  "namespace": "custom",
+  "key": "set_reference",
+  "description": "Kod łączący produkty w komplet (np. VG-001)",
+  "type": "single_line_text_field",
+  "validations": {
+    "max_length": 20
+  },
+  "options": {
+    "pin_to_resource": true
+  }
+}
+
+Przykład:
+
+    Pierścionek Van Gogh #1: set_reference = "VG-001"
+    Kolczyki Van Gogh #1: set_reference = "VG-001"
+    Naszyjnik Van Gogh #1: set_reference = "VG-001"
+
+→ System automatycznie wyświetla "Skompletuj Zestaw"
+H. Profil Kamienia (Encyklopedia)
+
+{
+  "name": "Profil Kamienia",
+  "namespace": "custom",
+  "key": "stone_education",
+  "description": "Link do bazy wiedzy o kamieniu",
+  "type": "metaobject_reference",
+  "validations": {
+    "metaobject_definition_id": "stone_profile"
+  },
+  "options": {
+    "pin_to_resource": true
+  }
+}
+
+<a name="metaobjects-code"></a>
+5. KOD - METAOBJECTS DEFINITIONS
+5.1 Metaobject: collection_enhanced
+
+Lokalizacja: Settings > Custom Data > Metaobjects > Add definition
+
+Cel: Rozszerzone dane dla kolekcji autorskich (Van Gogh, Aletheia, Żywioły)
+
+{
+  "name": "Collection Enhanced",
+  "type": "collection_enhanced",
+  "display_name_key": "name",
+  "fields": [
+    {
+      "name": "Name",
+      "key": "name",
+      "description": "Nazwa kolekcji",
+      "type": "single_line_text_field",
+      "required": true
+    },
+    {
+      "name": "Hero Video",
+      "key": "hero_video",
+      "description": "Wideo w tle nagłówka (10-15s loop, MP4, max 5MB)",
+      "type": "file_reference",
+      "validations": {
+        "file_type_options": ["video"]
+      }
+    },
+    {
+      "name": "Texture Overlay",
+      "key": "texture_overlay",
+      "description": "PNG z transparencją (1920x1080px, max 200KB)",
+      "type": "file_reference",
+      "validations": {
+        "file_type_options": ["image"]
+      }
+    },
+    {
+      "name": "Philosophy",
+      "key": "philosophy",
+      "description": "Manifest artystyczny kolekcji (300-500 słów)",
+      "type": "rich_text_field"
+    },
+    {
+      "name": "Accent Color",
+      "key": "accent_color",
+      "description": "Kolor wiodący (hex, np. #1a1a2e)",
+      "type": "color"
+    },
+    {
+      "name": "Featured Products",
+      "key": "featured_products",
+      "description": "Ręcznie wybrane hero products",
+      "type": "list.product_reference",
+      "validations": {
+        "max_items": 10
+      }
+    }
+  ],
+  "options": {
+    "web_page_enabled": false
+  }
+}
+
+5.2 Metaobject: stone_profile
+
+Cel: Encyklopedia kamieni (Opal, Ametyst, Akwamaryn...)
+
+{
+  "name": "Stone Profile",
+  "type": "stone_profile",
+  "display_name_key": "stone_name",
+  "fields": [
+    {
+      "name": "Stone Name",
+      "key": "stone_name",
+      "description": "Nazwa kamienia (np. Czarny Opal)",
+      "type": "single_line_text_field",
+      "required": true
+    },
+    {
+      "name": "Hero Image",
+      "key": "hero_image",
+      "description": "Zdjęcie kamienia (1200x800px)",
+      "type": "file_reference",
+      "validations": {
+        "file_type_options": ["image"]
+      }
+    },
+    {
+      "name": "Hardness",
+      "key": "hardness",
+      "description": "Skala Mohsa (np. 5.5-6.5)",
+      "type": "single_line_text_field"
+    },
+    {
+      "name": "Mythology",
+      "key": "mythology",
+      "description": "Historia i znaczenie ezoteryczne (200-300 słów)",
+      "type": "rich_text_field"
+    },
+    {
+      "name": "Care Instructions",
+      "key": "care_instructions",
+      "description": "Jak dbać o kamień (100-150 słów)",
+      "type": "rich_text_field"
+    },
+    {
+      "name": "Origin Map",
+      "key": "origin_map",
+      "description": "Mapa pochodzenia (1000x600px)",
+      "type": "file_reference",
+      "validations": {
+        "file_type_options": ["image"]
+      }
+    }
+  ],
+  "options": {
+    "web_page_enabled": false
+  }
+}
+
+<a name="liquid-code"></a>
+6. KOD - LIQUID TEMPLATES
+6.1 Dynamic Collection Template
+
+Plik: sections/collection-hero-dynamic.liquid
+
+{% comment %}
+  Dynamic Collection Hero
+  Pobiera dane z collection_enhanced metaobject
+  Fallback do domyślnego layoutu jeśli brak metaobject
+{% endcomment %}
+
+{% assign collection_meta = collection.metafields.custom.collection_enhanced %}
+
+{% if collection_meta %}
+  {%- comment -%} ENHANCED COLLECTION {%- endcomment -%}
+  
+  <div class="collection-hero collection-hero--enhanced" 
+       style="background-color: {{ collection_meta.accent_color | default: '#000000' }}">
+    
+    {%- comment -%} Hero Video Background {%- endcomment -%}
+    {% if collection_meta.hero_video %}
+      <div class="collection-hero__video">
+        <video autoplay loop muted playsinline>
+          <source src="{{ collection_meta.hero_video | file_url }}" type="video/mp4">
+        </video>
+      </div>
+    {% endif %}
+    
+    {%- comment -%} Texture Overlay {%- endcomment -%}
+    {% if collection_meta.texture_overlay %}
+      <div class="collection-hero__texture" 
+           style="background-image: url({{ collection_meta.texture_overlay | image_url: width: 1920 }})">
+      </div>
+    {% endif %}
+    
+    {%- comment -%} Content {%- endcomment -%}
+    <div class="collection-hero__content container">
+      <h1 class="collection-hero__title">{{ collection.title }}</h1>
+      
+      {% if collection_meta.philosophy %}
+        <div class="collection-hero__philosophy">
+          {{ collection_meta.philosophy }}
+        </div>
+      {% endif %}
+      
+      <a href="#products" class="collection-hero__cta button">
+        Odkryj Kolekcję
+      </a>
+    </div>
+  </div>
+  
+  {%- comment -%} Featured Products (jeśli są) {%- endcomment -%}
+  {% if collection_meta.featured_products.size > 0 %}
+    <div class="collection-featured container">
+      <h2>Wybrane Sztuki</h2>
+      <div class="product-grid product-grid--featured">
+        {% for product in collection_meta.featured_products %}
+          {% render 'product-card', product: product %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+{% else %}
+  {%- comment -%} DEFAULT COLLECTION (bez metaobject) {%- endcomment -%}
+  
+  <div class="collection-hero collection-hero--default">
+    {% if collection.image %}
+      <div class="collection-hero__image">
+        {{ collection.image | image_url: width: 2400 | image_tag: 
+           alt: collection.title,
+           loading: 'eager'
+        }}
+      </div>
+    {% endif %}
+    
+    <div class="collection-hero__content container">
+      <h1 class="collection-hero__title">{{ collection.title }}</h1>
+      
+      {% if collection.description != blank %}
+        <div class="collection-hero__description">
+          {{ collection.description }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+{% endif %}
+
+{%- comment -%} Products Grid (zawsze) {%- endcomment -%}
+<div id="products" class="collection-products container">
+  {% paginate collection.products by 24 %}
+    <div class="product-grid">
+      {% for product in collection.products %}
+        {% render 'product-card', product: product %}
+      {% endfor %}
+    </div>
+    
+    {% render 'pagination', paginate: paginate %}
+  {% endpaginate %}
+</div>
+
+<style>
+.collection-hero--enhanced {
+  position: relative;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.collection-hero__video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.collection-hero__video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+}
+
+.collection-hero__texture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  z-index: 2;
+  mix-blend-mode: overlay;
+}
+
+.collection-hero__content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  color: #ffffff;
+  max-width: 800px;
+  padding: 2rem;
+}
+
+.collection-hero__title {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.collection-hero__philosophy {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+}
+
+@media (max-width: 768px) {
+  .collection-hero__title {
+    font-size: 2rem;
+  }
+  .collection-hero__philosophy {
+    font-size: 1rem;
+  }
+}
+</style>
+
+6.2 Product Metafields Display
+
+Plik: snippets/product-metafields.liquid
+
+{% comment %}
+  Product Metafields Display
+  Wyświetla atrybuty fizyczne produktu
+{% endcomment %}
+
+{% if product.metafields.custom.main_stone != blank 
+   or product.metafields.custom.metal_type != blank 
+   or product.metafields.custom.carat_weight != blank %}
+  
+  <div class="product-specs">
+    <h3 class="product-specs__title">Specyfikacja</h3>
+    
+    <dl class="product-specs__list">
+      
+      {%- comment -%} Kruszec {%- endcomment -%}
+      {% if product.metafields.custom.metal_type %}
+        <div class="product-specs__item">
+          <dt>Kruszec:</dt>
+          <dd>{{ product.metafields.custom.metal_type }}</dd>
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Kamień {%- endcomment -%}
+      {% if product.metafields.custom.main_stone %}
+        <div class="product-specs__item">
+          <dt>Kamień:</dt>
+          <dd>
+            {% for stone in product.metafields.custom.main_stone %}
+              {{ stone }}{% unless forloop.last %}, {% endunless %}
+            {% endfor %}
+          </dd>
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Masa {%- endcomment -%}
+      {% if product.metafields.custom.carat_weight %}
+        <div class="product-specs__item">
+          <dt>Masa kamienia:</dt>
+          <dd>{{ product.metafields.custom.carat_weight }} ct</dd>
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Rozmiar {%- endcomment -%}
+      {% if product.metafields.custom.size_text %}
+        <div class="product-specs__item">
+          <dt>Rozmiar:</dt>
+          <dd>{{ product.metafields.custom.size_text }}</dd>
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Pochodzenie {%- endcomment -%}
+      {% if product.metafields.custom.origin %}
+        <div class="product-specs__item">
+          <dt>Pochodzenie:</dt>
+          <dd>{{ product.metafields.custom.origin }}</dd>
+        </div>
+      {% endif %}
+      
+    </dl>
+  </div>
+
+{% endif %}
+
+<style>
+.product-specs {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.product-specs__title {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.product-specs__list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.product-specs__item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+}
+
+.product-specs__item dt {
+  font-weight: 500;
+  color: #666;
+}
+
+.product-specs__item dd {
+  margin: 0;
+  color: #000;
+}
+</style>
+
+6.3 Stone Education Section
+
+Plik: snippets/stone-education.liquid
+
+{% comment %}
+  Stone Education
+  Wyświetla informacje o kamieniu z stone_profile metaobject
+{% endcomment %}
+
+{% assign stone_profile = product.metafields.custom.stone_education %}
+
+{% if stone_profile %}
+  <div class="stone-education">
+    
+    {%- comment -%} Hero Image {%- endcomment -%}
+    {% if stone_profile.hero_image %}
+      <div class="stone-education__image">
+        {{ stone_profile.hero_image | image_url: width: 1200 | image_tag: 
+           alt: stone_profile.stone_name,
+           loading: 'lazy'
+        }}
+      </div>
+    {% endif %}
+    
+    <div class="stone-education__content">
+      <h2 class="stone-education__title">
+        O Kamieniu: {{ stone_profile.stone_name }}
+      </h2>
+      
+      {%- comment -%} Hardness {%- endcomment -%}
+      {% if stone_profile.hardness %}
+        <div class="stone-education__hardness">
+          <strong>Twardość:</strong> {{ stone_profile.hardness }} w skali Mohsa
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Mythology {%- endcomment -%}
+      {% if stone_profile.mythology %}
+        <div class="stone-education__mythology">
+          <h3>Historia i Znaczenie</h3>
+          {{ stone_profile.mythology }}
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Care Instructions {%- endcomment -%}
+      {% if stone_profile.care_instructions %}
+        <div class="stone-education__care">
+          <h3>Pielęgnacja</h3>
+          {{ stone_profile.care_instructions }}
+        </div>
+      {% endif %}
+      
+      {%- comment -%} Origin Map {%- endcomment -%}
+      {% if stone_profile.origin_map %}
+        <div class="stone-education__map">
+          <h3>Pochodzenie</h3>
+          {{ stone_profile.origin_map | image_url: width: 1000 | image_tag: 
+             alt: 'Mapa pochodzenia ' | append: stone_profile.stone_name,
+             loading: 'lazy'
+          }}
+        </div>
+      {% endif %}
+    </div>
+    
+  </div>
+{% endif %}
+
+<style>
+.stone-education {
+  margin: 3rem 0;
+  padding: 2rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+}
+
+.stone-education__image {
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stone-education__image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.stone-education__title {
+  font-size: 1.75rem;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+}
+
+.stone-education__hardness {
+  padding: 1rem;
+  background: #f5f5f5;
+  border-left: 4px solid #333;
+  margin-bottom: 2rem;
+}
+
+.stone-education__mythology,
+.stone-education__care {
+  margin-bottom: 2rem;
+}
+
+.stone-education__mythology h3,
+.stone-education__care h3,
+.stone-education__map h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.stone-education__map img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+</style>
+
+6.4 Canonical Breadcrumbs
+
+Plik: snippets/breadcrumbs.liquid
+
+{% comment %}
+  Canonical Breadcrumbs
+  Używa custom.canonical_parent zamiast losowej kolekcji
+{% endcomment %}
+
+{% if template contains 'product' %}
+  
+  {%- comment -%} Sprawdź czy produkt ma canonical_parent {%- endcomment -%}
+  {% if product.metafields.custom.canonical_parent %}
+    {% assign breadcrumb_collection = product.metafields.custom.canonical_parent %}
+  {% elsif collection %}
+    {% assign breadcrumb_collection = collection %}
+  {% endif %}
+  
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumbs__list">
+      <li class="breadcrumbs__item">
+        <a href="/">Start</a>
+      </li>
+      
+      {% if breadcrumb_collection %}
+        <li class="breadcrumbs__item">
+          <a href="{{ breadcrumb_collection.url }}">
+            {{ breadcrumb_collection.title }}
+          </a>
+        </li>
+      {% endif %}
+      
+      <li class="breadcrumbs__item breadcrumbs__item--current">
+        <span>{{ product.title }}</span>
+      </li>
+    </ol>
+  </nav>
+
+{% elsif template contains 'collection' %}
+  
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ol class="breadcrumbs__list">
+      <li class="breadcrumbs__item">
+        <a href="/">Start</a>
+      </li>
+      <li class="breadcrumbs__item breadcrumbs__item--current">
+        <span>{{ collection.title }}</span>
+      </li>
+    </ol>
+  </nav>
+
+{% endif %}
+
