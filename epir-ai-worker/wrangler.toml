@@ -1,0 +1,24 @@
+name = "epir-ai-platform-v3"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+SHOPIFY_STORE_URL = "epir-bizuteria.myshopify.com"
+SHOPIFY_API_VERSION = "2024-01"
+SYSTEM_PROMPT_VERSION = "v3_semantic_epir"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "epir-analytics-prod"
+database_id = "TODO_INSERT_ID"
+
+[[durable_objects].bindings]
+name = "CHAT_SESSIONS"
+class_name = "ChatSession"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatSession"]
