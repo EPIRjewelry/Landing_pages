@@ -30,7 +30,6 @@ Poniżej znajduje się zestawienie kluczowych narzędzi oraz sprawdzonych rozwi�
 ## 6. Nowoczesny UX/UI dla branży biżuterii
 - Projektowanie grafik: [Canva](https://www.canva.com/)
 - Inspiracje designu: [Dribbble - Jewelry Landing Page](https://dribbble.com/search/jewelry%20landing%20page)
-- Prototypowanie i współpraca: [Figma](https://www.figma.com/)
 
 ---
 
