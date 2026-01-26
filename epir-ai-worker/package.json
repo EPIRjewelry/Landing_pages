@@ -1,0 +1,20 @@
+{
+  "name": "epir-ai-worker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@cloudflare/ai": "^1.2.2",
+    "groq-sdk": "^0.37.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.60.0"
+  }
+}

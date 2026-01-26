@@ -6,6 +6,7 @@ compatibility_date = "2024-01-01"
 SHOPIFY_STORE_URL = "epir-bizuteria.myshopify.com"
 SHOPIFY_API_VERSION = "2024-01"
 SYSTEM_PROMPT_VERSION = "v3_semantic_epir"
+PUBLIC_API_KEY = "TWOJ_JAWNY_KLUCZ"
 
 [ai]
 binding = "AI"
@@ -13,9 +14,9 @@ binding = "AI"
 [[d1_databases]]
 binding = "DB"
 database_name = "epir-analytics-prod"
-database_id = "TODO_INSERT_ID"
+database_id = "516018d7-1395-474d-9a5b-c14846affa9a"
 
-[[durable_objects].bindings]
+[[durable_objects.bindings]]
 name = "CHAT_SESSIONS"
 class_name = "ChatSession"
 

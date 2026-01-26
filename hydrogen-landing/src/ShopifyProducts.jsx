@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from 'react'
-
-const SHOPIFY_DOMAIN = import.meta.env.VITE_STORE_DOMAIN || 'epirbizuteria.pl'
-const STOREFRONT_TOKEN = import.meta.env.VITE_STOREFRONT_TOKEN
-if (!STOREFRONT_TOKEN) console.warn('VITE_STOREFRONT_TOKEN is not set — Storefront API requests may fail')
-const GRAPHQL_URL = `https://${SHOPIFY_DOMAIN}/api/2023-10/graphql.json`
+import { shopifyFetch, SHOPIFY_DOMAIN } from './shopify/client'
 
 function ProductModal({ product, onClose }) {
-  const images = product.images?.edges?.map(edge => edge.node.src).filter(Boolean)
+  const images = product.images?.edges?.map(edge => edge.node.url).filter(Boolean)
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -65,7 +61,7 @@ function ProductModal({ product, onClose }) {
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.3rem' }}>{product.title}</h3>
         <p style={{ margin: 0, color: '#5b4a3f' }}>{product.description}</p>
         <a
-          href={`https://${SHOPIFY_DOMAIN}/products/${product.id.split('/').pop()}`}
+          href={`https://${SHOPIFY_DOMAIN}/products/${product.handle}`}
           target='_blank'
           rel='noreferrer'
           style={{ display: 'inline-block', marginTop: '1rem', color: '#1b1004', fontWeight: 600 }}
@@ -103,18 +99,24 @@ export default function ShopifyProducts() {
       setLoading(true)
       setError(null)
       try {
-        const query = `query { products(first: 8) { edges { node { id title description images(first: 5) { edges { node { src altText } } } } } } }`
-        const response = await fetch(GRAPHQL_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN
-          },
-          body: JSON.stringify({ query })
-        })
-        const json = await response.json()
-        if (json.data?.products) {
-          setProducts(json.data.products.edges.map(edge => edge.node))
+        const query = `query getProducts($first: Int = 8) {
+          products(first: $first) {
+            edges {
+              node {
+                id
+                title
+                handle
+                description
+                descriptionHtml
+                images(first: 5) { edges { node { url altText } } }
+              }
+            }
+          }
+        }`
+
+        const data = await shopifyFetch({ query, variables: { first: 8 } })
+        if (data?.products) {
+          setProducts(data.products.edges.map(edge => edge.node))
         } else {
           setError('Brak danych z API')
         }
@@ -168,9 +170,9 @@ export default function ShopifyProducts() {
             onClick={() => setActiveProduct(product)}
           >
             <div style={{ borderRadius: '1rem', overflow: 'hidden', marginBottom: '1rem' }}>
-              {product.images?.edges?.[0]?.node?.src ? (
+              {product.images?.edges?.[0]?.node?.url ? (
                 <img
-                  src={product.images.edges[0].node.src}
+                  src={product.images.edges[0].node.url}
                   alt={product.images.edges[0].node.altText || product.title}
                   style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }}
                 />

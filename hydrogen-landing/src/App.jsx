@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Gem, Hammer, Fingerprint, Instagram, Facebook, Twitter, ArrowRight } from 'lucide-react';
+import OrganicCollection from './components/OrganicCollection';
+import { fetchFeaturedCollection } from './shopify/collections';
 
 /**
  * EPIR Art Jewellery & Gemstone - Official Landing Page Component
@@ -10,6 +12,8 @@ import { Menu, X, Gem, Hammer, Fingerprint, Instagram, Facebook, Twitter, ArrowR
 const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [featuredCollection, setFeaturedCollection] = useState(null);
+  const [collectionError, setCollectionError] = useState(null);
 
   // Efekt dla nawigacji przy scrollowaniu
   useEffect(() => {
@@ -18,6 +22,30 @@ const App = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadCollection() {
+      try {
+        const handle = import.meta.env.VITE_COLLECTION_HANDLE;
+        const collection = await fetchFeaturedCollection(handle);
+        if (isActive) {
+          setFeaturedCollection(collection);
+        }
+      } catch (error) {
+        if (isActive) {
+          setCollectionError(error.message || 'Nie udało się pobrać kolekcji');
+        }
+      }
+    }
+
+    loadCollection();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -112,6 +140,14 @@ const App = () => {
           </div>
         </div>
       </section>
+
+      {collectionError && (
+        <section className="py-6 bg-white text-center text-sm text-red-600">
+          Nie udało się pobrać danych kolekcji: {collectionError}
+        </section>
+      )}
+
+      <OrganicCollection collection={featuredCollection} settings={{ theme: 'light' }} />
 
       {/* --- ABOUT / PHILOSOPHY --- */}
       <section id="o-nas" className="py-24 bg-white">
