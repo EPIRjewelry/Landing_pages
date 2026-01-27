@@ -3,7 +3,7 @@ main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-SHOPIFY_STORE_URL = "epir-bizuteria.myshopify.com"
+SHOPIFY_STORE_URL = "epir-art-silver-jewellery.myshopify.com"
 SHOPIFY_API_VERSION = "2024-01"
 SYSTEM_PROMPT_VERSION = "v3_semantic_epir"
 PUBLIC_API_KEY = "TWOJ_JAWNY_KLUCZ"
@@ -13,13 +13,32 @@ binding = "AI"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "epir-analytics-prod"
-database_id = "516018d7-1395-474d-9a5b-c14846affa9a"
+database_name = "epir-analytics"
+database_id = "REPLACE_WITH_D1_ID"
 
 [[durable_objects.bindings]]
 name = "CHAT_SESSIONS"
 class_name = "ChatSession"
 
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiterDO"
+
+[[durable_objects.bindings]]
+name = "SESSION"
+class_name = "SessionDO"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["ChatSession"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RateLimiterDO"]
+
+[[migrations]]
+tag = "v3"
+new_classes = ["SessionDO"]
+
+[env.production]
+vars = { SHOPIFY_STORE_URL = "https://epir-art-silver-jewellery.myshopify.com", WEB_PIXEL_SECRET = "pixel_secret_xxx", BIGQUERY_ENDPOINT = "https://analytical-agent-xxx.run.app/ingest" }

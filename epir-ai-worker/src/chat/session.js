@@ -43,6 +43,10 @@ export class ChatSession {
   }
 
   async handleMessage(ws, message) {
+    // Persist or generate session id to link to SessionDO
+    const sessionId = message.session_id || (await this.storage.get('session_id')) || crypto.randomUUID();
+    await this.storage.put('session_id', sessionId);
+
     // 1. SCENARIUSZ VISION: Użytkownik wysłał zdjęcie
     if (message.type === 'image') {
       ws.send(JSON.stringify({ type: 'status', content: 'Analizuję zdjęcie...' }));
@@ -113,11 +117,39 @@ export class ChatSession {
 
         console.log(`[AI Tool Exec] ${fnName}`, args);
 
+        // Retrieve sessionId and context from SessionDO (if available)
+        const sessionId = (await this.storage.get('session_id')) || null;
+        let sessionContext = {};
+        try {
+          if (sessionId && this.env && this.env.SESSION) {
+            const doId = this.env.SESSION.idFromName(sessionId);
+            const stub = this.env.SESSION.get(doId);
+            const resp = await stub.fetch('https://session/get');
+            if (resp.ok) sessionContext = await resp.json();
+          }
+        } catch (e) {
+          console.warn('Failed to fetch session context', e);
+        }
+
         try {
           if (fnName === 'get_stone_expertise') {
             toolResult = await this.shopify.getStoneExpertise(args.stone_name);
+            // Context-aware hint: if user recently viewed same stone, add suggestion
+            const recentlyViewed = (sessionContext.pixel_events || []).filter(e => e.event === 'product_viewed').slice(-5);
+            const viewedStones = recentlyViewed.map(e => (e.main_stone || '').toString().toLowerCase()).filter(Boolean);
+            if (viewedStones.includes(String(args.stone_name || '').toLowerCase())) {
+              toolResult.context_message = `Zauważyłem, że oglądałeś produkty z ${args.stone_name}. `;
+            }
           } else if (fnName === 'search_granular_products') {
-            toolResult = await this.shopify.searchGranularProducts(args);
+            // If filters missing, try infer from session chat history
+            const paramsWithContext = { ...args };
+            if (!paramsWithContext.filters && Array.isArray(sessionContext.chat_history) && sessionContext.chat_history.length > 0) {
+              const lastMsg = (sessionContext.chat_history.slice(-1)[0] || '').toString().toLowerCase();
+              if (lastMsg.includes('rocznic')) {
+                paramsWithContext.filters = { occasion_type: 'anniversary' };
+              }
+            }
+            toolResult = await this.shopify.searchGranularProducts(paramsWithContext);
           } else if (fnName === 'match_set_items') {
             toolResult = await this.shopify.matchSetItems(args.product_id);
           } else if (fnName === 'get_collection_story') {
@@ -125,6 +157,20 @@ export class ChatSession {
           }
         } catch (e) {
           toolResult = { error: e.message };
+        }
+
+        // Log tool call into Session DO for analytics and context
+        try {
+          if (sessionId && this.env && this.env.SESSION) {
+            const doId = this.env.SESSION.idFromName(sessionId);
+            const stub = this.env.SESSION.get(doId);
+            await stub.fetch('https://session/update', {
+              method: 'POST',
+              body: JSON.stringify({ type: 'tool_call', tool: fnName, params: args, result: toolResult })
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to log tool call to session DO', e);
         }
 
         // 3. Dodajemy wynik ("dowód") do historii

@@ -1,7 +1,9 @@
 export class ShopifyService {
   constructor(env) {
     this.env = env;
-    this.storeUrl = env.SHOPIFY_STORE_URL;
+    this.storeUrl = String(env.SHOPIFY_STORE_URL || '')
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '');
     this.apiVersion = env.SHOPIFY_API_VERSION;
     this.token = env.SHOPIFY_ADMIN_TOKEN;
 
