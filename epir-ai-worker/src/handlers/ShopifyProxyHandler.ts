@@ -1,5 +1,12 @@
 import { CacheManager } from './CacheManager';
 
+type Env = {
+  SHOPIFY_STORE_URL: string;
+  SHOPIFY_API_VERSION: string;
+  SHOPIFY_ADMIN_TOKEN: string;
+  [key: string]: string | undefined;
+};
+
 const JSONRPC_ERROR = {
   PARSE_ERROR: { code: -32700, message: 'Parse error' },
   INVALID_REQUEST: { code: -32600, message: 'Invalid Request' },
@@ -8,13 +15,13 @@ const JSONRPC_ERROR = {
   INTERNAL_ERROR: { code: -32603, message: 'Internal error' }
 };
 
-const ALLOWED_METHODS = new Set([
+const ALLOWED_METHODS: Set<string> = new Set([
   'get_stone_expertise',
   'search_products',
   'get_collection_story'
 ]);
 
-const ALLOWED_FILTERS = new Set([
+const ALLOWED_FILTERS: Set<string> = new Set([
   'occasion_type',
   'main_stone',
   'metal_type',
@@ -22,8 +29,8 @@ const ALLOWED_FILTERS = new Set([
 ]);
 
 const CACHE_KEYS = {
-  stone: (name) => `v1:stone_profile:${String(name || '').toLowerCase()}`,
-  collection: (handle) => `v1:collection_enhanced:${String(handle || '').toLowerCase()}`
+  stone: (name: string) => `v1:stone_profile:${String(name || '').toLowerCase()}`,
+  collection: (handle: string) => `v1:collection_enhanced:${String(handle || '').toLowerCase()}`
 };
 
 const TTL = {
@@ -31,20 +38,20 @@ const TTL = {
   collection: 60 * 60
 };
 
-function jsonRpcResponse(id, result) {
+function jsonRpcResponse(id: string | number | null, result: any): Record<string, any> {
   return { jsonrpc: '2.0', id, result };
 }
 
-function jsonRpcError(id, error) {
+function jsonRpcError(id: string | number | null, error: { code: number; message: string }): Record<string, any> {
   return { jsonrpc: '2.0', id, error };
 }
 
-function sanitizeString(input) {
+function sanitizeString(input: unknown): string {
   return String(input || '').trim();
 }
 
-function sanitizeSearchParams(params = {}) {
-  const sanitized = {};
+function sanitizeSearchParams(params: Record<string, any> = {}): Record<string, string> {
+  const sanitized: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
     if (!ALLOWED_FILTERS.has(key)) continue;
     if (typeof value !== 'string' || value.trim().length === 0) continue;
@@ -53,15 +60,15 @@ function sanitizeSearchParams(params = {}) {
   return sanitized;
 }
 
-function buildProductQuery(filters) {
-  const terms = [];
+function buildProductQuery(filters: Record<string, string>): string {
+  const terms: string[] = [];
   for (const [key, value] of Object.entries(filters)) {
     terms.push(`metafield:custom.${key}:${value}`);
   }
   return terms.join(' AND ');
 }
 
-function normalizeHandle(value) {
+function normalizeHandle(value: string): string {
   return String(value || '')
     .trim()
     .toLowerCase()
@@ -69,13 +76,13 @@ function normalizeHandle(value) {
     .replace(/(^-|-$)+/g, '');
 }
 
-function normalizeShopDomain(value) {
+function normalizeShopDomain(value: string): string {
   return String(value || '')
     .replace(/^https?:\/\//i, '')
     .replace(/\/+$/, '');
 }
 
-async function graphQlRequest(env, query, variables) {
+async function graphQlRequest(env: Env, query: string, variables?: Record<string, any>): Promise<{ data: any; response: Response }> {
   const shopDomain = normalizeShopDomain(env.SHOPIFY_STORE_URL);
   const endpoint = `https://${shopDomain}/admin/api/${env.SHOPIFY_API_VERSION}/graphql.json`;
   const response = await fetch(endpoint, {
@@ -98,12 +105,15 @@ async function graphQlRequest(env, query, variables) {
 }
 
 export class ShopifyProxyHandler {
-  constructor(env) {
+  env: Env;
+  cacheManager: CacheManager;
+
+  constructor(env: Env) {
     this.env = env;
     this.cacheManager = new CacheManager();
   }
 
-  async handle(request) {
+  async handle(request: Request): Promise<Response> {
     let payload;
     try {
       payload = await request.json();
@@ -117,7 +127,7 @@ export class ShopifyProxyHandler {
       });
     }
 
-    const { id, method, params = {} } = payload;
+    const { id, method, params = {} } = payload as { id?: string | number | null; method?: string; params?: Record<string, any> };
     if (!ALLOWED_METHODS.has(method)) {
       return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.METHOD_NOT_FOUND)), { status: 404 });
     }
@@ -147,7 +157,7 @@ export class ShopifyProxyHandler {
     }
   }
 
-  async getStoneExpertise(params, request, start) {
+  async getStoneExpertise(params: Record<string, any>, request: Request, start: number): Promise<any> {
     const stone = sanitizeString(params.stone || params.stone_name);
     if (!stone) {
       throw new Error('Missing stone');
@@ -155,7 +165,7 @@ export class ShopifyProxyHandler {
 
     const handle = normalizeHandle(stone);
     const cacheKey = CACHE_KEYS.stone(handle);
-    const fetcher = async () => {
+    const fetcher = async (): Promise<Response> => {
       const query = `
         query GetStoneProfile($handle: String!) {
           metaobjectByHandle(handle: { type: "stone_profile", handle: $handle }) {
@@ -181,14 +191,14 @@ export class ShopifyProxyHandler {
     return result;
   }
 
-  async getCollectionStory(params, request, start) {
+  async getCollectionStory(params: Record<string, any>, request: Request, start: number): Promise<any> {
     const collectionHandle = normalizeHandle(params.collection_handle || params.collection_name);
     if (!collectionHandle) {
       throw new Error('Missing collection handle');
     }
 
     const cacheKey = CACHE_KEYS.collection(collectionHandle);
-    const fetcher = async () => {
+    const fetcher = async (): Promise<Response> => {
       const query = `
         query GetCollectionEnhanced($handle: String!) {
           metaobjectByHandle(handle: { type: "collection_enhanced", handle: $handle }) {
@@ -212,7 +222,7 @@ export class ShopifyProxyHandler {
     return result;
   }
 
-  async searchProducts(params, request, start) {
+  async searchProducts(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
     const filters = sanitizeSearchParams(params || {});
     if (Object.keys(filters).length === 0) {
       throw new Error('Missing filters');
@@ -247,7 +257,7 @@ export class ShopifyProxyHandler {
     return products;
   }
 
-  logStructured(request, toolName, cacheHit, start) {
+  logStructured(request: Request, toolName: string, cacheHit: boolean, start: number): void {
     console.log(
       JSON.stringify({
         level: 'info',
@@ -261,7 +271,7 @@ export class ShopifyProxyHandler {
     );
   }
 
-  logRateLimit(response) {
+  logRateLimit(response: Response): void {
     const apiCallLimit = response.headers.get('X-Shopify-Shop-Api-Call-Limit');
     if (!apiCallLimit) return;
     const [used, total] = apiCallLimit.split('/').map(Number);
