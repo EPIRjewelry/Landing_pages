@@ -1,0 +1,25 @@
+{
+  "name": "landing_pages",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "devDependencies": {
+    "@shopify/app": "^3.58.2",
+    "@shopify/cli": "^3.89.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EPIRjewelry/Landing_pages.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/EPIRjewelry/Landing_pages/issues"
+  },
+  "homepage": "https://github.com/EPIRjewelry/Landing_pages#readme"
+}

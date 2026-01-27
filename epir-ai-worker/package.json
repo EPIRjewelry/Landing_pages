@@ -12,7 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "@cloudflare/ai": "^1.2.2",
-    "groq-sdk": "^0.37.0"
+    "groq-sdk": "^0.37.0",
+    "mustache": "^4.2.0"
   },
   "devDependencies": {
     "wrangler": "^4.60.0"

@@ -2,6 +2,7 @@ import { Groq } from 'groq-sdk';
 import { Ai } from '@cloudflare/ai';
 import { EPIR_TOOLS } from './tools.js';
 import { ShopifyService } from '../shopify/service.js';
+import { ProfileService } from './profile.js';
 
 export class ChatSession {
   constructor(state, env) {
@@ -12,13 +13,28 @@ export class ChatSession {
     this.groq = new Groq({ apiKey: env.GROQ_API_KEY });
     this.ai = new Ai(env.AI);
     this.shopify = new ShopifyService(env);
+    this.profileService = new ProfileService(env);
     this.history = [];
   }
 
   async fetch(request) {
+    const url = new URL(request.url);
+
+    // --- INTERNAL SIGNALS (Analytics) ---
+    if (url.pathname === '/internal/signal' && request.method === 'POST') {
+      const data = await request.json();
+      await this.handleSignal(data);
+      return new Response('OK');
+    }
+
     // Odzyskanie historii z trwałego zapisu
     const storedHistory = await this.storage.get('history');
     if (storedHistory) this.history = storedHistory;
+    
+    // Odzyskanie viewedProducts
+    const viewedProducts = await this.storage.get('viewedProducts');
+    if (viewedProducts) this.viewedProducts = viewedProducts;
+    else this.viewedProducts = [];
 
     // Obsługa WebSocket
     const upgradeHeader = request.headers.get('Upgrade');
@@ -66,13 +82,205 @@ export class ChatSession {
         this.addToHistory('system', `[VISION_ERROR]: Nie udało się przeanalizować zdjęcia. Błąd: ${e.message}`);
       }
     }
-    // 2. SCENARIUSZ TEKSTOWY
+    // 3. SCENARIUSZ HANDSHAKE (Powiązanie ClientID z SessionID)
+    else if (message.type === 'register_client') {
+      const clientId = message.clientId;
+      const sessionId = this.state.id.toString(); // ID sesji DO
+
+      if (clientId && this.env.DB) {
+        try {
+          // A. Mapowanie sesji (Legacy/Operational)
+          await this.env.DB.prepare(
+            `INSERT OR REPLACE INTO customer_sessions (client_id, session_id) VALUES (?, ?)`
+          ).bind(clientId, sessionId).run();
+          
+          // B. Profile Persistence (Golden Record)
+          // Inicjalizacja/Touch profilu przy wejściu z obsługą Optimistic Locking
+          await this.profileService.updateProfile(clientId, {
+             email: message.email,
+             firstName: message.firstName,
+             phone: message.phone
+          });
+          
+          this.addToHistory('system', `[DEBUG]: Powiązano klienta ${clientId} z sesją i zaktualizowano profil.`);
+
+          // --- AUTO CLEANUP CONFIGURATION ---
+          // Zapisz dane do cleanupa
+          await this.storage.put('mapped_client_id', clientId);
+          await this.storage.put('last_mapping_activity', Date.now());
+
+          // Ustaw alarm cleanupu (5 min), o ile nie ma pilniejszego alarmu (np. flush zdarzeń)
+          const currentAlarm = await this.storage.getAlarm();
+          const cleanupTime = Date.now() + 5 * 60 * 1000;
+          
+          if (!currentAlarm || currentAlarm > cleanupTime) {
+              await this.storage.setAlarm(cleanupTime);
+          }
+        } catch (e) {
+          console.error('Mapping Error:', e);
+        }
+      }
+    }
+    // 4. SCENARIUSZ TEKSTOWY
     else {
       this.addToHistory('user', message.text);
     }
 
-    // 3. PĘTLA WNIOSKOWANIA (Decyzja -> Narzędzia -> Odpowiedź)
-    await this.runInferenceLoop(ws);
+    // 5. PĘTLA WNIOSKOWANIA (Decyzja -> Narzędzia -> Odpowiedź)
+    // Tylko dla wiadomości tekstowych/obrazkowych, nie dla pingów
+    if (message.type !== 'register_client') {
+      await this.runInferenceLoop(ws);
+    }
+  }
+
+  // --- PERSISTENCE & ANALYTICS LAYERS ---
+
+  /**
+   * HOT PATH: Obsługa sygnałów z Pixela (product_viewed, collection_viewed)
+   * Aktualizuje stan pamięci (viewedProducts) dla szybkiego dostępu przez LLM.
+   */
+  async handleSignal(signal) {
+    const { type, payload } = signal;
+    
+    // Log do D1 (Warm Path)
+    await this.logChatEvent(type, payload);
+
+    // Aktualizacja stanu Hot (InMemory/DO Storage)
+    if (type === 'product_viewed') {
+      const product = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      
+      // Init if missing
+      if (!this.viewedProducts) this.viewedProducts = [];
+      
+      // Unikamy duplikatów (ostatnie 5)
+      this.viewedProducts = [product, ...this.viewedProducts.filter(p => p.url !== product.url)].slice(0, 5);
+      
+      await this.storage.put('viewedProducts', this.viewedProducts);
+      
+      // Opcjonalnie: Jeśli klient jest w trakcie rozmowy, możemy wysłać powiadomienie
+      // this.broadcast({ type: 'debug', content: `Widzę, że przeglądasz: ${product.title}` });
+    }
+
+    // Cold Path Trigger: Ustawienie alarmu na flush do BigQuery
+    // Micro-batching: Alarm za 60 sekund od pierwszego zdarzenia
+    const currentAlarm = await this.storage.getAlarm();
+    if (currentAlarm === null) {
+      await this.storage.setAlarm(Date.now() + 60 * 1000);
+    }
+  }
+
+  /**
+   * WARM PATH: Zapis interakcji do D1
+   */
+  async logChatEvent(type, payload) {
+    try {
+      const sessionId = await this.storage.get('session_id') || 'unknown';
+      const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      
+      if (this.env.DB) {
+        await this.env.DB.prepare(
+          `INSERT INTO events (session_id, type, payload) VALUES (?, ?, ?)`
+        ).bind(sessionId, type, payloadStr).run();
+      }
+    } catch (e) {
+      console.error('Failed to log chat event:', e);
+    }
+  }
+
+  /**
+   * COLD PATH: Zrzut danych do BigQuery (Alarm)
+   */
+  async alarm() {
+    // 1. Flush Events to BigQuery
+    await this.flushToBigQuery();
+
+    // 2. Cleanup Old Mappings
+    await this.cleanupMappings();
+  }
+
+  async cleanupMappings() {
+    const lastActivity = await this.storage.get('last_mapping_activity');
+    const clientId = await this.storage.get('mapped_client_id');
+    
+    if (!lastActivity || !clientId) return;
+    
+    const now = Date.now();
+    const timeout = 5 * 60 * 1000; // 5 min
+    
+    // Sprawdź czy czas minął
+    if (now - lastActivity > timeout) {
+        try {
+            // Skasuj mapowanie w D1
+            if (this.env.DB) {
+                await this.env.DB.prepare(
+                    'DELETE FROM customer_sessions WHERE client_id = ? AND session_id = ?'
+                ).bind(clientId, this.state.id.toString()).run();
+            }
+            // Wyczyść storage
+            await this.storage.delete(['mapped_client_id', 'last_mapping_activity']);
+            // console.log(`[Cleaner] Removed mapping for ${clientId}`);
+        } catch(e) { 
+            console.error('Cleanup error', e); 
+        }
+    } else {
+        // Jeśli czas nie minął (np. alarm obudził się na flush events),
+        // upewnij się, że alarm na cleanup jest ustawiony ponownie na przyszłość.
+        const nextCheck = lastActivity + timeout;
+        
+        // Nie nadpisuj, jeśli mamy coś pilniejszego (choć tu jesteśmy PO flushu, więc kolejka pusta?)
+        // Bezpieczniej: zawsze ustaw na przewidywany koniec sesji. 
+        // Jeśli w międzyczasie wpadnie event -> handleSignal przestawi alarm na +60s (czyli wcześniej) -> OK.
+        await this.storage.setAlarm(nextCheck);
+    }
+  }
+
+  async flushToBigQuery() {
+    const sessionId = await this.storage.get('session_id');
+    if (!sessionId) return;
+
+    try {
+      // 1. Pobierz nieprzetworzone eventy dla tej sesji
+      // Limit 100 dla batcha
+      const { results } = await this.env.DB.prepare(
+        `SELECT * FROM events WHERE session_id = ? AND processed_at IS NULL LIMIT 100`
+      ).bind(sessionId).run();
+
+      if (!results || results.length === 0) return;
+
+      // 2. Wyślij do BigQuery (Low-Level Fetch z Workload Identity lub Service Account Token)
+      // Tutaj zakładam, że ENV.BIGQUERY_ENDPOINT wskazuje na proxy autoryzujące lub bezpośrednie API Google
+      // W wersji "Brak kluczy JSON", endpoint targetuje naszego Workera z bindingiem analytics-engine lub 
+      // zewnętrzny serwis CloudRun z Workload Identity Federation.
+      // DLA UPROSZCZENIA (zgodnie z poleceniem): Native fetch na endpoint.
+      
+      if (this.env.BIGQUERY_ENDPOINT) {
+         const response = await fetch(this.env.BIGQUERY_ENDPOINT, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ 
+             rows: results.map(r => ({ json: r, insertId: r.id.toString() })) 
+           })
+         });
+
+         if (!response.ok) {
+           throw new Error(`BigQuery Flush Failed: ${response.status}`);
+         }
+      }
+
+      // 3. Zaktualizuj processed_at
+      const ids = results.map(r => r.id).join(',');
+      await this.env.DB.prepare(
+        `UPDATE events SET processed_at = CURRENT_TIMESTAMP WHERE id IN (${ids})`
+      ).run();
+
+      // Reset alarmu, jeśli są jeszcze jakieś dane (recursive batching)
+      // await this.storage.setAlarm(Date.now() + 10 * 1000); 
+
+    } catch (e) {
+      console.error('Alarm/Flush Error:', e);
+      // Retry logic: set alarm again logic needed? 
+      // For now, let it fail safely.
+    }
   }
 
   // Główna pętla decyzyjna "Neuro-Symboliczna"

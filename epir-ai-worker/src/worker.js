@@ -5,10 +5,13 @@
 
 import { ChatSession } from './chat/session.js';
 import { AnalyticsIngestor } from './analytics/ingestor.js';
+import { AnalyticsService } from './analytics/service.js';
 import { LandingPageHandler } from './landing/handler.js';
 import { handleMcpProxy } from './mcp-proxy.ts';
 import { RateLimiterDO } from './rate-limiter.ts';
 import { SessionDO } from './SessionDO.ts';
+// Import HTML for dashboard
+import dashboardHtml from './analytics/dashboard.html';
 
 // Eksport Durable Object jest wymagany przez Cloudflare, aby środowisko mogło go powiązać z klasą w wrangler.toml
 export { ChatSession, RateLimiterDO, SessionDO };
@@ -17,6 +20,31 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // --- 0. DASHBOARD (Admin) ---
+    if (path === '/admin/dashboard') {
+        const key = url.searchParams.get('key');
+        if (key !== env.ADMIN_SECRET) {
+             return new Response('Unauthorized', { status: 401 });
+        }
+        return new Response(dashboardHtml, {
+             headers: { 'Content-Type': 'text/html' }
+        });
+    }
+
+    if (path === '/admin/api/leads') {
+        const key = request.headers.get('X-Admin-Key');
+        if (key !== env.ADMIN_SECRET) {
+             return new Response('Unauthorized', { status: 401 });
+        }
+        const service = new AnalyticsService(env.DB);
+        const leads = await service.getHotLeads();
+        const stats = await service.getDailyStats();
+        
+        return new Response(JSON.stringify({ leads, stats }), {
+             headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
     if (path === '/api/mcp') {
       return handleMcpProxy(request, env);
@@ -157,44 +185,89 @@ function withCors(origin) {
   };
 }
 
+
 async function handleAnalytics(request, env) {
-  const origin = request.headers.get('Origin') || '';
-  const allowedOrigins = new Set([
-    'https://epirbizuteria.pl',
-    'https://epir-ai-worker.krzysztofdzugaj.workers.dev'
-  ]);
-  const corsOrigin = allowedOrigins.has(origin) ? origin : 'null';
-
+  // CORS Handling (Permissive for Analytics)
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: withCors(corsOrigin) });
+    return new Response(null, { 
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
   }
 
-  if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: withCors(corsOrigin) });
+  // 1. Odbiór danych (zakładamy standard Shopify Pixel Payload)
+  let payload;
+  try {
+    payload = await request.json();
+  } catch(e) {
+    return new Response('Invalid JSON', { status: 400 });
   }
 
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${env.WEB_PIXEL_SECRET}`) {
-    return new Response('Unauthorized', { status: 401, headers: withCors(corsOrigin) });
+  // Wyciągamy kluczowe identyfikatory
+  // Shopify Pixels wysyłają clientId w głównym obiekcie
+  const clientId = payload.clientId || payload.client_id;
+  const eventName = payload.name || payload.type || 'unknown_event';
+  
+  // Jeśli brak clientId, traktujemy event jako anonimowy, ale zapisujemy
+  const effectiveSessionId = clientId || 'anonymous';
+
+  // 2. Lookup w D1: Czy ten clientId ma aktywną sesję DO?
+  let linkedSessionId = null;
+  if (clientId) {
+    try {
+      // Szybki odczyt z tabeli mapującej
+      const mapping = await env.DB.prepare(
+        'SELECT session_id FROM customer_sessions WHERE client_id = ?'
+      ).bind(clientId).first();
+      
+      if (mapping) {
+        linkedSessionId = mapping.session_id;
+      }
+    } catch (e) {
+      console.error('Mapping Lookup Error:', e);
+    }
   }
 
-  const data = await request.json();
-  const sessionId = getSessionId(request);
-  const doId = env.SESSION.idFromName(sessionId);
-  const doStub = env.SESSION.get(doId);
+  // 3. Logika zapisu i przekierowania
+  
+  // A) Zawsze zapisz do "Cold Store" (D1 Events) dla BigQuery
+  // Używamy linkedSessionId jeśli jest (żeby spiąć historię), w przeciwnym razie clientId
+  const storageId = linkedSessionId || effectiveSessionId;
+  const eventPayload = JSON.stringify(payload);
+  
+  // Fire-and-forget insert (waitUntil)
+  env.DB.prepare(
+    `INSERT INTO events (session_id, type, payload) VALUES (?, ?, ?)`
+  ).bind(storageId, eventName, eventPayload).run().catch(err => console.error('D1 Insert Error', err));
 
-  await doStub.fetch('https://session/update', {
-    method: 'POST',
-    body: JSON.stringify({
-      type: data.event_type,
-      ...data
-    })
-  });
 
-  return new Response(JSON.stringify({ ok: true, session_id: sessionId }), {
+  // B) Jeśli znaleziono aktywną sesję DO -> Wyślij sygnał (Hot Path)
+  if (linkedSessionId) {
+    try {
+      const id = env.CHAT_SESSIONS.idFromString(linkedSessionId);
+      const stub = env.CHAT_SESSIONS.get(id);
+      
+      // Asynchroniczne powiadomienie DO
+      stub.fetch('https://fake-host/internal/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: eventName, payload: payload })
+      });
+    } catch (e) {
+      console.error('DO Signal Error:', e);
+    }
+  }
+
+  // Odpowiedź 200 OK (szybka)
+  return new Response(JSON.stringify({ received: true }), {
     headers: {
       'Content-Type': 'application/json',
-      ...withCors(corsOrigin)
+      'Access-Control-Allow-Origin': '*' 
     }
   });
 }
+
+
