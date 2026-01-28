@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "epir-ai",
+    "epir-ai-worker",
+    "epir-landing",
+    "hydrogen-landing"
+  ],
   "devDependencies": {
     "@shopify/app": "^3.58.2",
     "@shopify/cli": "^3.89.0"

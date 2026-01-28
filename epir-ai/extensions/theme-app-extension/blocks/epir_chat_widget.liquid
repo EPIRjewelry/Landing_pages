@@ -1,0 +1,41 @@
+<div id="epir-assistant-section" 
+     data-api-url="https://epir-ai-worker.krzysztofdzugaj.workers.dev"
+     data-logged-in-customer-id="{{ customer.id }}"
+     data-start-closed="true">
+  
+  <div id="assistant-content" class="is-closed" aria-live="polite">
+    <div id="chat-header">
+      <span class="dot"></span>
+      <span class="title">EPIR AI Assistant</span>
+    </div>
+    <div id="assistant-messages" role="log"></div>
+    <div id="chat-input-container">
+      <input type="text" id="assistant-input" placeholder="Zadaj pytanie o biżuterię..." aria-label="Wiadomość">
+      <button id="assistant-send-button" aria-label="Wyślij">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <button id="assistant-toggle-button" aria-expanded="false" aria-controls="assistant-content">
+    <img src="{{ 'assistant-icon.png' | asset_img_url: '40x40' }}" alt="AI" loading="lazy">
+  </button>
+</div>
+
+<script src="{{ 'assistant.js' | asset_url }}" defer></script>
+{{ 'assistant.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "EPIR AI Chat",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "api_url",
+      "label": "Worker API URL",
+      "default": "https://epir-ai-worker.krzysztofdzugaj.workers.dev"
+    }
+  ]
+}
+{% endschema %}

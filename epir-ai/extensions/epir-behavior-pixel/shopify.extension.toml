@@ -1,0 +1,16 @@
+name = "epir-behavior-pixel"
+type = "web_pixel_extension"
+uid = "eb1bae1a-6977-42f7-b9bf-4050b11b706e5d891d14"
+
+runtime_context = "strict"
+
+[settings]
+type = "object"
+
+[settings.fields.accountID]
+name = "Account ID"
+description = "Account ID"
+type = "single_line_text_field"
+validations =  [
+  { name = "min", value = "1" }
+]

@@ -5,3 +5,8 @@ node_modules
 .cache
 dist
 generated/
+
+# Cloudflare & D1
+.wrangler/
+*.sqlite*
+.dev.vars
