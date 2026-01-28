@@ -333,6 +333,43 @@ export class ShopifyProxyHandler {
       throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch public catalog', details: e?.message || String(e || 'fetch error') }));
     }
 
+    // If access forbidden, retry with browser-like headers and attempt redirect host fallback
+    if (res.status === 403) {
+      console.warn('getProductCatalog initial fetch returned 403, retrying with browser UA');
+      const browserHeaders = {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+        Referer: `https://${shopDomain}/`,
+      };
+      try {
+        res = await fetch(endpoint, { headers: browserHeaders });
+      } catch (e) {
+        console.error('getProductCatalog retry fetch failed', e);
+        throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch public catalog on retry', details: e?.message || String(e || 'fetch error') }));
+      }
+    }
+
+    if (res.status === 403) {
+      // Try following root redirect to discover custom domain
+      try {
+        const root = await fetch(`https://${shopDomain}/`, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const finalUrl = root.url || '';
+        const finalHost = finalUrl ? new URL(finalUrl).host : null;
+        if (finalHost && finalHost !== shopDomain) {
+          const fallbackEndpoint = `https://${finalHost}/products.json?limit=${limit}&page=${page}`;
+          console.warn('getProductCatalog attempting fallback to host', finalHost);
+          try {
+            res = await fetch(fallbackEndpoint, { headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0', Referer: `https://${finalHost}/` } });
+          } catch (e) {
+            console.error('getProductCatalog fallback fetch failed', e);
+            throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch public catalog on fallback', details: e?.message || String(e || 'fetch error') }));
+          }
+        }
+      } catch (e) {
+        console.warn('getProductCatalog root redirect check failed', e?.message || e);
+      }
+    }
+
     if (!res.ok) {
       const bodyText = await res.text().catch(() => '');
       console.error('getProductCatalog bad response', res.status, bodyText);
@@ -367,6 +404,42 @@ export class ShopifyProxyHandler {
     } catch (e) {
       console.error('searchShopCatalog fetch failed', e);
       throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch products for search', details: e?.message || String(e || 'fetch error') }));
+    }
+
+    // Retry with browser-like headers if forbidden and attempt redirect host fallback
+    if (res.status === 403) {
+      console.warn('searchShopCatalog initial fetch returned 403, retrying with browser UA');
+      const browserHeaders = {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+        Referer: `https://${shopDomain}/`,
+      };
+      try {
+        res = await fetch(endpoint, { headers: browserHeaders });
+      } catch (e) {
+        console.error('searchShopCatalog retry fetch failed', e);
+        throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch products for search on retry', details: e?.message || String(e || 'fetch error') }));
+      }
+    }
+
+    if (res.status === 403) {
+      try {
+        const root = await fetch(`https://${shopDomain}/`, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const finalUrl = root.url || '';
+        const finalHost = finalUrl ? new URL(finalUrl).host : null;
+        if (finalHost && finalHost !== shopDomain) {
+          const fallbackEndpoint = `https://${finalHost}/products.json?limit=${limit}`;
+          console.warn('searchShopCatalog attempting fallback to host', finalHost);
+          try {
+            res = await fetch(fallbackEndpoint, { headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0', Referer: `https://${finalHost}/` } });
+          } catch (e) {
+            console.error('searchShopCatalog fallback fetch failed', e);
+            throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch products for search on fallback', details: e?.message || String(e || 'fetch error') }));
+          }
+        }
+      } catch (e) {
+        console.warn('searchShopCatalog root redirect check failed', e?.message || e);
+      }
     }
 
     if (!res.ok) {
