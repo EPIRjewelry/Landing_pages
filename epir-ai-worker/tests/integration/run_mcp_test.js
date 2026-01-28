@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 const WORKER_URL = process.env.WORKER_URL || 'https://epir-ai-platform-v3.krzysztofdzugaj.workers.dev/api/mcp';
 
 async function run() {
