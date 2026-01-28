@@ -18,11 +18,15 @@ const JSONRPC_ERROR = {
 const ALLOWED_METHODS: Set<string> = new Set([
   'get_stone_expertise',
   'search_products',
+  'search_shop_catalog',
   'get_collection_story',
   'get_catalog',
+  'get_product_catalog',
   'get_cart',
   'add_item_to_cart',
-  'remove_item_from_cart'
+  'remove_item_from_cart',
+  'update_cart',
+  'idt'
 ]);
 
 const ALLOWED_FILTERS: Set<string> = new Set([
@@ -199,14 +203,22 @@ export class ShopifyProxyHandler {
         result = await this.getCollectionStory(params, request, start);
       } else if (method === 'search_products') {
         result = await this.searchProducts(params, request, start);
+      } else if (method === 'search_shop_catalog') {
+        result = await this.searchShopCatalog(params, request, start);
       } else if (method === 'get_catalog') {
         result = await this.getCatalog(params, request, start);
+      } else if (method === 'get_product_catalog') {
+        result = await this.getProductCatalog(params, request, start);
       } else if (method === 'get_cart') {
         result = await this.getCart(params, request, start, sessionToken);
       } else if (method === 'add_item_to_cart') {
         result = await this.addItemToCart(params, request, start, sessionToken);
       } else if (method === 'remove_item_from_cart') {
         result = await this.removeItemFromCart(params, request, start, sessionToken);
+      } else if (method === 'update_cart') {
+        result = await this.updateCart(params, request, start, sessionToken);
+      } else if (method === 'idt') {
+        result = await this.idt(params, request, start, sessionToken);
       } else {
         return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.METHOD_NOT_FOUND)), { status: 404 });
       }
@@ -304,6 +316,99 @@ export class ShopifyProxyHandler {
     const result = await callShopifyMcp(this.env, 'get_catalog', { limit, query: queryTerm });
     this.logStructured(request, 'get_catalog', false, start);
     return result || [];
+  }
+
+  async getProductCatalog(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
+    // Public fallback implementation using the public products.json endpoint
+    const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 250);
+    const page = Math.max(Number(params.page) || 1, 1);
+    const shopDomain = normalizeShopDomain(this.env.SHOPIFY_STORE_URL);
+    const endpoint = `https://${shopDomain}/products.json?limit=${limit}&page=${page}`;
+
+    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch public catalog: ${res.status} ${res.statusText}`);
+    }
+
+    const payload = await res.json();
+    const products = Array.isArray(payload.products) ? payload.products : [];
+    this.logStructured(request, 'get_product_catalog', false, start);
+    return products;
+  }
+
+  async searchShopCatalog(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
+    // Fallback semantic-like search by fetching a reasonable window of products and filtering locally
+    const q = String(params.query || '').trim();
+    if (!q) throw new Error('Missing query');
+
+    const limit = Math.min(Math.max(Number(params.limit) || 50, 1), 250);
+    const shopDomain = normalizeShopDomain(this.env.SHOPIFY_STORE_URL);
+    const endpoint = `https://${shopDomain}/products.json?limit=${limit}`;
+
+    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch products for search: ${res.status}`);
+    }
+
+    const payload = await res.json();
+    const products = Array.isArray(payload.products) ? payload.products : [];
+
+    const qLower = q.toLowerCase();
+    const filtered = products.filter((p: any) => {
+      const title = String(p.title || '').toLowerCase();
+      const handle = String(p.handle || '').toLowerCase();
+      const body = String(p.body_html || '').toLowerCase();
+      const tags = (p.tags || '').toString().toLowerCase();
+      return title.includes(qLower) || handle.includes(qLower) || body.includes(qLower) || tags.includes(qLower);
+    });
+
+    this.logStructured(request, 'search_shop_catalog', false, start);
+    return filtered;
+  }
+
+  async idt(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
+    // Identity & Discovery Tool: returns minimal identity info based on session token
+    if (!sessionToken) throw new Error('AUTH_REQUIRED');
+    // For privacy, return a masked token preview and indicate authenticated
+    const preview = `${sessionToken.slice(0, 8)}...${sessionToken.slice(-4)}`;
+    this.logStructured(request, 'idt', false, start);
+    return { authenticated: true, tokenPreview: preview };
+  }
+
+  async updateCart(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
+    // Update quantities or replace lines in the cart -- requires auth/session
+    if (!sessionToken) throw new Error('AUTH_REQUIRED');
+    const { cartId, lines } = params; // lines: [{ id: lineId, quantity }]
+    if (!cartId) throw new Error('Missing cartId');
+    if (!Array.isArray(lines) || lines.length === 0) throw new Error('Missing lines to update');
+
+    // Try to use MCP first (if store implements it); fallback to GraphQL via POST
+    try {
+      const res = await callShopifyMcp(this.env, 'update_cart', { cartId, lines }, sessionToken);
+      this.logStructured(request, 'update_cart', false, start);
+      return res;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e || '');
+      if (msg.includes('Method not found')) {
+        // Fallback to GraphQL cartLinesUpdate if possible
+        const mutation = `
+          mutation CartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
+            cartLinesUpdate(cartId: $cartId, lines: $lines) {
+              cart { id lines(first: 50) { edges { node { id quantity } } } cost { totalAmount { amount currencyCode } } }
+              userErrors { field message }
+            }
+          }
+        `;
+        const variables = { cartId, lines };
+        const { data } = await graphQlRequest(this.env, mutation, variables, sessionToken);
+        if (data?.cartLinesUpdate?.userErrors?.length > 0) {
+          throw new Error(data.cartLinesUpdate.userErrors.map((u: any) => u.message).join(', '));
+        }
+        this.logStructured(request, 'update_cart_fallback_graphql', false, start);
+        return data.cartLinesUpdate?.cart || null;
+      }
+      throw e;
+    }
   }
 
   async getCart(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
