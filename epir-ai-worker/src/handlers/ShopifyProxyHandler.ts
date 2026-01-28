@@ -272,43 +272,6 @@ export class ShopifyProxyHandler {
 
   async getCatalog(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
     // Wrapper for listing products with support for limits and simple query
-    const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
-    const queryTerm = params.query ? `query: "${params.query}", ` : '';
-    
-    // We can re-use search logic or specialized query
-    const query = `
-      query GetCatalog {
-        products(first: ${limit}, ${queryTerm}sortKey: BEST_SELLING) {
-          edges {
-            node {
-              id
-              title
-              handle
-              description
-              priceRange {
-                minVariantPrice { amount currencyCode }
-              }
-              compareAtPriceRange {
-                minVariantPrice { amount currencyCode }
-              }
-              images(first: 1) {
-                edges { node { url } }
-              }
-              variants(first: 10) {
-                 edges {
-                   node {
-                     id
-                     title
-                     price { amount currencyCode }
-                     availableForSale
-                   }
-                 }
-              }
-            }
-          }
-        }
-      }
-    `;
     
     const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
     const queryTerm = params.query || null;
