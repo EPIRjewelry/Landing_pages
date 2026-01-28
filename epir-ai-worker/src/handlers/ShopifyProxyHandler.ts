@@ -325,12 +325,28 @@ export class ShopifyProxyHandler {
     const shopDomain = normalizeShopDomain(this.env.SHOPIFY_STORE_URL);
     const endpoint = `https://${shopDomain}/products.json?limit=${limit}&page=${page}`;
 
-    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch public catalog: ${res.status} ${res.statusText}`);
+    let res: Response;
+    try {
+      res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+    } catch (e) {
+      console.error('getProductCatalog fetch failed', e);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch public catalog', details: e?.message || String(e || 'fetch error') }));
     }
 
-    const payload = await res.json();
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      console.error('getProductCatalog bad response', res.status, bodyText);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32006, message: `Public catalog returned ${res.status}`, details: bodyText }));
+    }
+
+    let payload: any;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      console.error('getProductCatalog invalid JSON', e);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32004, message: 'Invalid JSON from public catalog' }));
+    }
+
     const products = Array.isArray(payload.products) ? payload.products : [];
     this.logStructured(request, 'get_product_catalog', false, start);
     return products;
@@ -345,12 +361,28 @@ export class ShopifyProxyHandler {
     const shopDomain = normalizeShopDomain(this.env.SHOPIFY_STORE_URL);
     const endpoint = `https://${shopDomain}/products.json?limit=${limit}`;
 
-    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) {
-      throw new Error(`Failed to fetch products for search: ${res.status}`);
+    let res: Response;
+    try {
+      res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+    } catch (e) {
+      console.error('searchShopCatalog fetch failed', e);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32005, message: 'Failed to fetch products for search', details: e?.message || String(e || 'fetch error') }));
     }
 
-    const payload = await res.json();
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      console.error('searchShopCatalog bad response', res.status, bodyText);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32006, message: `Products endpoint returned ${res.status}`, details: bodyText }));
+    }
+
+    let payload: any;
+    try {
+      payload = await res.json();
+    } catch (e) {
+      console.error('searchShopCatalog invalid JSON', e);
+      throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32004, message: 'Invalid JSON from products endpoint' }));
+    }
+
     const products = Array.isArray(payload.products) ? payload.products : [];
 
     const qLower = q.toLowerCase();
