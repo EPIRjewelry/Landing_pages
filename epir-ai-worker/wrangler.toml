@@ -4,8 +4,6 @@ compatibility_date = "2024-01-01"
 
 [vars]
 SHOPIFY_STORE_URL = "epir-art-silver-jewellery.myshopify.com"
-SHOPIFY_API_VERSION = "2024-01"
-SYSTEM_PROMPT_VERSION = "v3_semantic_epir"
 
 [ai]
 binding = "AI"
@@ -38,6 +36,3 @@ new_sqlite_classes = ["RateLimiterDO"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["SessionDO"]
-
-[env.production]
-vars = { SHOPIFY_STORE_URL = "https://epir-art-silver-jewellery.myshopify.com", BIGQUERY_ENDPOINT = "https://analytical-agent-xxx.run.app/ingest" }

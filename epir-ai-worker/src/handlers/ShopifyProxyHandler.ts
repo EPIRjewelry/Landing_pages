@@ -2,8 +2,7 @@ import { CacheManager } from './CacheManager';
 
 type Env = {
   SHOPIFY_STORE_URL: string;
-  SHOPIFY_API_VERSION: string;
-  SHOPIFY_ADMIN_TOKEN: string;
+  SHOPIFY_API_VERSION?: string;
   [key: string]: string | undefined;
 };
 
@@ -12,7 +11,8 @@ const JSONRPC_ERROR = {
   INVALID_REQUEST: { code: -32600, message: 'Invalid Request' },
   METHOD_NOT_FOUND: { code: -32601, message: 'Method not found' },
   INVALID_PARAMS: { code: -32602, message: 'Invalid params' },
-  INTERNAL_ERROR: { code: -32603, message: 'Internal error' }
+  INTERNAL_ERROR: { code: -32603, message: 'Internal error' },
+  AUTH_REQUIRED: { code: -32001, message: 'Auth required (session token missing)' }
 };
 
 const ALLOWED_METHODS: Set<string> = new Set([
@@ -41,6 +41,8 @@ const TTL = {
   stone: 24 * 60 * 60,
   collection: 60 * 60
 };
+
+const DEFAULT_API_VERSION = '2024-01';
 
 function jsonRpcResponse(id: string | number | null, result: any): Record<string, any> {
   return { jsonrpc: '2.0', id, result };
@@ -86,15 +88,34 @@ function normalizeShopDomain(value: string): string {
     .replace(/\/+$/, '');
 }
 
-async function graphQlRequest(env: Env, query: string, variables?: Record<string, any>): Promise<{ data: any; response: Response }> {
+function extractSessionToken(request: Request): string | undefined {
+  const explicit = request.headers.get('X-Shopify-Session-Token');
+  if (explicit) return explicit.trim();
+  const auth = request.headers.get('Authorization') || '';
+  if (auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  return undefined;
+}
+
+async function graphQlRequest(
+  env: Env,
+  query: string,
+  variables?: Record<string, any>,
+  sessionToken?: string
+): Promise<{ data: any; response: Response }> {
   const shopDomain = normalizeShopDomain(env.SHOPIFY_STORE_URL);
-  const endpoint = `https://${shopDomain}/admin/api/${env.SHOPIFY_API_VERSION}/graphql.json`;
+  const apiVersion = env.SHOPIFY_API_VERSION || DEFAULT_API_VERSION;
+  const endpoint = `https://${shopDomain}/api/${apiVersion}/graphql.json`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (sessionToken) {
+    headers.Authorization = `Bearer ${sessionToken}`;
+  }
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': env.SHOPIFY_ADMIN_TOKEN
-    },
+    headers,
     body: JSON.stringify({ query, variables })
   });
 
@@ -106,6 +127,26 @@ async function graphQlRequest(env: Env, query: string, variables?: Record<string
   }
 
   return { data: payload.data, response };
+}
+
+async function callShopifyMcp(env: Env, method: string, params: Record<string, any> = {}, sessionToken?: string): Promise<any> {
+  const shopDomain = normalizeShopDomain(env.SHOPIFY_STORE_URL);
+  const endpoint = `https://${shopDomain}/api/mcp`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
+  const id = Math.floor(Math.random() * 1e9);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ jsonrpc: '2.0', id, method, params })
+  });
+
+  const payload = await response.json();
+  if (!response.ok || payload.error) {
+    const errMsg = payload?.error?.message || `MCP proxy error: ${response.status}`;
+    throw new Error(errMsg);
+  }
+  return payload.result;
 }
 
 export class ShopifyProxyHandler {
@@ -137,6 +178,7 @@ export class ShopifyProxyHandler {
     }
 
     const start = Date.now();
+    const sessionToken = extractSessionToken(request);
     try {
       let result;
       if (method === 'get_stone_expertise') {
@@ -148,11 +190,11 @@ export class ShopifyProxyHandler {
       } else if (method === 'get_catalog') {
         result = await this.getCatalog(params, request, start);
       } else if (method === 'get_cart') {
-        result = await this.getCart(params, request, start);
+        result = await this.getCart(params, request, start, sessionToken);
       } else if (method === 'add_item_to_cart') {
-        result = await this.addItemToCart(params, request, start);
+        result = await this.addItemToCart(params, request, start, sessionToken);
       } else if (method === 'remove_item_from_cart') {
-        result = await this.removeItemFromCart(params, request, start);
+        result = await this.removeItemFromCart(params, request, start, sessionToken);
       } else {
         return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.METHOD_NOT_FOUND)), { status: 404 });
       }
@@ -162,6 +204,13 @@ export class ShopifyProxyHandler {
       });
     } catch (error) {
       console.error('MCP Proxy error:', error);
+      const message = error instanceof Error ? error.message : String(error || 'Unknown error');
+      if (message.includes('AUTH_REQUIRED')) {
+        return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.AUTH_REQUIRED)), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
       return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.INTERNAL_ERROR)), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -178,23 +227,8 @@ export class ShopifyProxyHandler {
     const handle = normalizeHandle(stone);
     const cacheKey = CACHE_KEYS.stone(handle);
     const fetcher = async (): Promise<Response> => {
-      const query = `
-        query GetStoneProfile($handle: String!) {
-          metaobjectByHandle(handle: { type: "stone_profile", handle: $handle }) {
-            fields { key value }
-          }
-        }
-      `;
-      const { data, response } = await graphQlRequest(this.env, query, { handle });
-      this.logRateLimit(response);
-      const fields = data?.metaobjectByHandle?.fields || [];
-      const map = Object.fromEntries(fields.map((field) => [field.key, field.value]));
-      const body = JSON.stringify({
-        hardness: map.hardness || null,
-        mythology: map.mythology || null,
-        care_instructions: map.care_instructions || null
-      });
-      return new Response(body, { headers: { 'Content-Type': 'application/json' } });
+      const result = await callShopifyMcp(this.env, 'get_stone_expertise', { stone: handle });
+      return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
     };
 
     const { response, hit } = await this.cacheManager.getCached(cacheKey, fetcher, TTL.stone);
@@ -211,21 +245,8 @@ export class ShopifyProxyHandler {
 
     const cacheKey = CACHE_KEYS.collection(collectionHandle);
     const fetcher = async (): Promise<Response> => {
-      const query = `
-        query GetCollectionEnhanced($handle: String!) {
-          metaobjectByHandle(handle: { type: "collection_enhanced", handle: $handle }) {
-            fields { key value }
-          }
-        }
-      `;
-      const { data, response } = await graphQlRequest(this.env, query, { handle: collectionHandle });
-      this.logRateLimit(response);
-      const fields = data?.metaobjectByHandle?.fields || [];
-      const map = Object.fromEntries(fields.map((field) => [field.key, field.value]));
-      const body = JSON.stringify({
-        philosophy: map.philosophy || null
-      });
-      return new Response(body, { headers: { 'Content-Type': 'application/json' } });
+      const result = await callShopifyMcp(this.env, 'get_collection_story', { collection_handle: collectionHandle });
+      return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
     };
 
     const { response, hit } = await this.cacheManager.getCached(cacheKey, fetcher, TTL.collection);
@@ -240,33 +261,13 @@ export class ShopifyProxyHandler {
       throw new Error('Missing filters');
     }
 
-    const queryString = buildProductQuery(filters);
+    const filtersObj = filters;
     const sortKey = params.sortKey && typeof params.sortKey === 'string' ? params.sortKey : 'BEST_SELLING';
 
-    const query = `
-      query SearchProducts($query: String!) {
-        products(first: 10, query: $query, sortKey: ${sortKey}) {
-          edges {
-            node {
-              id
-              title
-              handle
-              metafield(namespace: "custom", key: "main_stone") { value }
-              metafield(namespace: "custom", key: "metal_type") { value }
-              metafield(namespace: "custom", key: "design_style") { value }
-              metafield(namespace: "custom", key: "occasion_type") { value }
-            }
-          }
-        }
-      }
-    `;
+    const result = await callShopifyMcp(this.env, 'search_products', { filters: filtersObj, sortKey });
 
-    const { data, response } = await graphQlRequest(this.env, query, { query: queryString });
-    this.logRateLimit(response);
-
-    const products = data?.products?.edges?.map((edge) => edge.node) || [];
     this.logStructured(request, 'search_products', false, start);
-    return products;
+    return result || [];
   }
 
   async getCatalog(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
@@ -309,18 +310,18 @@ export class ShopifyProxyHandler {
       }
     `;
     
-    // Uses Admin API by default as per existing search_products.
-    const { data, response } = await graphQlRequest(this.env, query);
-    this.logRateLimit(response);
-    
-    const products = data?.products?.edges?.map((edge: any) => edge.node) || [];
+    const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
+    const queryTerm = params.query || null;
+
+    const result = await callShopifyMcp(this.env, 'get_catalog', { limit, query: queryTerm });
     this.logStructured(request, 'get_catalog', false, start);
-    return products;
+    return result || [];
   }
 
-  async getCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+  async getCart(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
     const { cartId } = params;
     if (!cartId) throw new Error('Missing cartId');
+    if (!sessionToken) throw new Error('AUTH_REQUIRED');
 
     // Trying to access Cart via Admin API might be limited. 
     // If strict Admin context is used, we might need to map this to DraftOrders or assume Admin Cart access enabled.
@@ -353,13 +354,14 @@ export class ShopifyProxyHandler {
       }
     `;
 
-    const { data } = await graphQlRequest(this.env, query, { cartId });
+    const result = await callShopifyMcp(this.env, 'get_cart', { cartId }, sessionToken);
     this.logStructured(request, 'get_cart', false, start);
-    return data?.cart || null;
+    return result || null;
   }
 
-  async addItemToCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+  async addItemToCart(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
     const { cartId, lines } = params; // lines: [{ merchandiseId, quantity }]
+    if (!sessionToken) throw new Error('AUTH_REQUIRED');
     
     let targetCartId = cartId;
 
@@ -373,13 +375,13 @@ export class ShopifyProxyHandler {
            }
          }
        `;
-       const { data: createData } = await graphQlRequest(this.env, createQuery, { lines });
-       if (createData?.cartCreate?.userErrors?.length > 0) {
-         throw new Error(createData.cartCreate.userErrors.map((e: any) => e.message).join(', '));
-       }
-       targetCartId = createData?.cartCreate?.cart?.id;
-       this.logStructured(request, 'create_cart_implicit', false, start);
-       return createData?.cartCreate?.cart;
+      const createRes = await callShopifyMcp(this.env, 'add_item_to_cart', { lines }, sessionToken);
+      if (createRes?.userErrors?.length > 0) {
+        throw new Error(createRes.userErrors.map((e: any) => e.message).join(', '));
+      }
+      targetCartId = createRes?.cart?.id;
+      this.logStructured(request, 'create_cart_implicit', false, start);
+      return createRes?.cart;
     } else {
         const query = `
           mutation AddToCart($cartId: ID!, $lines: [CartLineInput!]!) {
@@ -395,19 +397,20 @@ export class ShopifyProxyHandler {
             }
           }
         `;
-        const { data } = await graphQlRequest(this.env, query, { cartId: targetCartId, lines });
-        if (data?.cartLinesAdd?.userErrors?.length > 0) {
-            throw new Error(data.cartLinesAdd.userErrors.map((e: any) => e.message).join(', '));
+        const res = await callShopifyMcp(this.env, 'add_item_to_cart', { cartId: targetCartId, lines }, sessionToken);
+        if (res?.userErrors?.length > 0) {
+            throw new Error(res.userErrors.map((e: any) => e.message).join(', '));
         }
         this.logStructured(request, 'add_item_to_cart', false, start);
-        return data?.cartLinesAdd?.cart;
+        return res?.cart;
     }
   }
 
-  async removeItemFromCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+      async removeItemFromCart(params: Record<string, any>, request: Request, start: number, sessionToken?: string): Promise<any> {
      const { cartId, lineIds } = params; // lineIds: string[]
      if (!cartId) throw new Error('Missing cartId');
      if (!lineIds || !Array.isArray(lineIds)) throw new Error('Missing lineIds array');
+       if (!sessionToken) throw new Error('AUTH_REQUIRED');
 
      const query = `
        mutation RemoveFromCart($cartId: ID!, $lineIds: [ID!]!) {
@@ -424,12 +427,12 @@ export class ShopifyProxyHandler {
        }
      `;
 
-    const { data } = await graphQlRequest(this.env, query, { cartId, lineIds });
-    if (data?.cartLinesRemove?.userErrors?.length > 0) {
-        throw new Error(data.cartLinesRemove.userErrors.map((e: any) => e.message).join(', '));
+    const res = await callShopifyMcp(this.env, 'remove_item_from_cart', { cartId, lineIds }, sessionToken);
+    if (res?.userErrors?.length > 0) {
+        throw new Error(res.userErrors.map((e: any) => e.message).join(', '));
     }
     this.logStructured(request, 'remove_item_from_cart', false, start);
-    return data?.cartLinesRemove?.cart;
+    return res?.cart;
   }
 
   logStructured(request: Request, toolName: string, cacheHit: boolean, start: number): void {

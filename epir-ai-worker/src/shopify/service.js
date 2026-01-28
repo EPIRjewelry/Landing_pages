@@ -4,26 +4,25 @@ export class ShopifyService {
     this.storeUrl = String(env.SHOPIFY_STORE_URL || '')
       .replace(/^https?:\/\//i, '')
       .replace(/\/+$/, '');
-    this.apiVersion = env.SHOPIFY_API_VERSION;
-    this.token = env.SHOPIFY_ADMIN_TOKEN;
+    this.apiVersion = env.SHOPIFY_API_VERSION || '2024-01';
 
     if (!this.storeUrl || !this.apiVersion) {
       throw new Error('Missing Shopify configuration: SHOPIFY_STORE_URL or SHOPIFY_API_VERSION');
     }
-    if (!this.token) {
-      throw new Error('Missing Shopify admin token: SHOPIFY_ADMIN_TOKEN');
-    }
-
-    this.endpoint = `https://${this.storeUrl}/admin/api/${this.apiVersion}/graphql.json`;
+    this.endpoint = `https://${this.storeUrl}/api/${this.apiVersion}/graphql.json`;
   }
 
-  async graphql(query, variables = {}) {
+  async graphql(query, variables = {}, sessionToken) {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    if (sessionToken) {
+      headers.Authorization = `Bearer ${sessionToken}`;
+    }
+
     const response = await fetch(this.endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': this.token
-      },
+      headers,
       body: JSON.stringify({ query, variables })
     });
 
