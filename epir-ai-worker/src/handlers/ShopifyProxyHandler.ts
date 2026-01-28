@@ -135,16 +135,28 @@ async function callShopifyMcp(env: Env, method: string, params: Record<string, a
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
   const id = Math.floor(Math.random() * 1e9);
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ jsonrpc: '2.0', id, method, params })
-  });
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ jsonrpc: '2.0', id, method, params })
+    });
+  } catch (e) {
+    throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32003, message: e?.message || String(e || 'fetch error') }));
+  }
 
-  const payload = await response.json();
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (e) {
+    throw new Error('MCP_ERROR:' + JSON.stringify({ code: -32004, message: 'invalid JSON from MCP' }));
+  }
+
   if (!response.ok || payload.error) {
-    const errMsg = payload?.error?.message || `MCP proxy error: ${response.status}`;
-    throw new Error(errMsg);
+    // Throw structured error so caller can convert into JSON-RPC error payload
+    const errorBody = payload?.error || { code: -32002, message: `MCP proxy error: ${response.status}` };
+    throw new Error('MCP_ERROR:' + JSON.stringify(errorBody));
   }
   return payload.result;
 }
@@ -211,6 +223,19 @@ export class ShopifyProxyHandler {
           headers: { 'Content-Type': 'application/json' }
         });
       }
+
+      if (message.startsWith('MCP_ERROR:')) {
+        try {
+          const payload = JSON.parse(message.slice('MCP_ERROR:'.length));
+          return new Response(JSON.stringify(jsonRpcError(id, { code: payload.code || -32002, message: payload.message || 'MCP error' })), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } catch (e) {
+          // fallthrough to internal error
+        }
+      }
+
       return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.INTERNAL_ERROR)), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
