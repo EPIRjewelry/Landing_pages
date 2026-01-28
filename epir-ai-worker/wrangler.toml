@@ -6,8 +6,6 @@ compatibility_date = "2024-01-01"
 SHOPIFY_STORE_URL = "epir-art-silver-jewellery.myshopify.com"
 SHOPIFY_API_VERSION = "2024-01"
 SYSTEM_PROMPT_VERSION = "v3_semantic_epir"
-PUBLIC_API_KEY = "TWOJ_JAWNY_KLUCZ"
-ADMIN_SECRET = "super-tajne-haslo-epir"
 
 [ai]
 binding = "AI"
@@ -42,4 +40,4 @@ tag = "v3"
 new_sqlite_classes = ["SessionDO"]
 
 [env.production]
-vars = { SHOPIFY_STORE_URL = "https://epir-art-silver-jewellery.myshopify.com", WEB_PIXEL_SECRET = "pixel_secret_xxx", BIGQUERY_ENDPOINT = "https://analytical-agent-xxx.run.app/ingest" }
+vars = { SHOPIFY_STORE_URL = "https://epir-art-silver-jewellery.myshopify.com", BIGQUERY_ENDPOINT = "https://analytical-agent-xxx.run.app/ingest" }

@@ -18,7 +18,11 @@ const JSONRPC_ERROR = {
 const ALLOWED_METHODS: Set<string> = new Set([
   'get_stone_expertise',
   'search_products',
-  'get_collection_story'
+  'get_collection_story',
+  'get_catalog',
+  'get_cart',
+  'add_item_to_cart',
+  'remove_item_from_cart'
 ]);
 
 const ALLOWED_FILTERS: Set<string> = new Set([
@@ -141,6 +145,14 @@ export class ShopifyProxyHandler {
         result = await this.getCollectionStory(params, request, start);
       } else if (method === 'search_products') {
         result = await this.searchProducts(params, request, start);
+      } else if (method === 'get_catalog') {
+        result = await this.getCatalog(params, request, start);
+      } else if (method === 'get_cart') {
+        result = await this.getCart(params, request, start);
+      } else if (method === 'add_item_to_cart') {
+        result = await this.addItemToCart(params, request, start);
+      } else if (method === 'remove_item_from_cart') {
+        result = await this.removeItemFromCart(params, request, start);
       } else {
         return new Response(JSON.stringify(jsonRpcError(id, JSONRPC_ERROR.METHOD_NOT_FOUND)), { status: 404 });
       }
@@ -255,6 +267,169 @@ export class ShopifyProxyHandler {
     const products = data?.products?.edges?.map((edge) => edge.node) || [];
     this.logStructured(request, 'search_products', false, start);
     return products;
+  }
+
+  async getCatalog(params: Record<string, any>, request: Request, start: number): Promise<any[]> {
+    // Wrapper for listing products with support for limits and simple query
+    const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
+    const queryTerm = params.query ? `query: "${params.query}", ` : '';
+    
+    // We can re-use search logic or specialized query
+    const query = `
+      query GetCatalog {
+        products(first: ${limit}, ${queryTerm}sortKey: BEST_SELLING) {
+          edges {
+            node {
+              id
+              title
+              handle
+              description
+              priceRange {
+                minVariantPrice { amount currencyCode }
+              }
+              compareAtPriceRange {
+                minVariantPrice { amount currencyCode }
+              }
+              images(first: 1) {
+                edges { node { url } }
+              }
+              variants(first: 10) {
+                 edges {
+                   node {
+                     id
+                     title
+                     price { amount currencyCode }
+                     availableForSale
+                   }
+                 }
+              }
+            }
+          }
+        }
+      }
+    `;
+    
+    // Uses Admin API by default as per existing search_products.
+    const { data, response } = await graphQlRequest(this.env, query);
+    this.logRateLimit(response);
+    
+    const products = data?.products?.edges?.map((edge: any) => edge.node) || [];
+    this.logStructured(request, 'get_catalog', false, start);
+    return products;
+  }
+
+  async getCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+    const { cartId } = params;
+    if (!cartId) throw new Error('Missing cartId');
+
+    // Trying to access Cart via Admin API might be limited. 
+    // If strict Admin context is used, we might need to map this to DraftOrders or assume Admin Cart access enabled.
+    const query = `
+      query GetCart($cartId: ID!) {
+        cart(id: $cartId) {
+          id
+          checkoutUrl
+          cost {
+            totalAmount { amount currencyCode }
+            subtotalAmount { amount currencyCode }
+          }
+          lines(first: 50) {
+            edges {
+              node {
+                id
+                quantity
+                merchandise {
+                  ... on ProductVariant {
+                    id
+                    title
+                    product { title handle }
+                    price { amount currencyCode }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const { data } = await graphQlRequest(this.env, query, { cartId });
+    this.logStructured(request, 'get_cart', false, start);
+    return data?.cart || null;
+  }
+
+  async addItemToCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+    const { cartId, lines } = params; // lines: [{ merchandiseId, quantity }]
+    
+    let targetCartId = cartId;
+
+    if (!targetCartId) {
+      // Create cart
+       const createQuery = `
+         mutation LinkCartCreate($lines: [CartLineInput!]) {
+           cartCreate(input: { lines: $lines }) {
+             cart { id checkoutUrl }
+             userErrors { field message }
+           }
+         }
+       `;
+       const { data: createData } = await graphQlRequest(this.env, createQuery, { lines });
+       if (createData?.cartCreate?.userErrors?.length > 0) {
+         throw new Error(createData.cartCreate.userErrors.map((e: any) => e.message).join(', '));
+       }
+       targetCartId = createData?.cartCreate?.cart?.id;
+       this.logStructured(request, 'create_cart_implicit', false, start);
+       return createData?.cartCreate?.cart;
+    } else {
+        const query = `
+          mutation AddToCart($cartId: ID!, $lines: [CartLineInput!]!) {
+            cartLinesAdd(cartId: $cartId, lines: $lines) {
+              cart {
+                id
+                lines(first: 50) {
+                   edges { node { id quantity } }
+                }
+                cost { totalAmount { amount currencyCode } }
+              }
+              userErrors { field message }
+            }
+          }
+        `;
+        const { data } = await graphQlRequest(this.env, query, { cartId: targetCartId, lines });
+        if (data?.cartLinesAdd?.userErrors?.length > 0) {
+            throw new Error(data.cartLinesAdd.userErrors.map((e: any) => e.message).join(', '));
+        }
+        this.logStructured(request, 'add_item_to_cart', false, start);
+        return data?.cartLinesAdd?.cart;
+    }
+  }
+
+  async removeItemFromCart(params: Record<string, any>, request: Request, start: number): Promise<any> {
+     const { cartId, lineIds } = params; // lineIds: string[]
+     if (!cartId) throw new Error('Missing cartId');
+     if (!lineIds || !Array.isArray(lineIds)) throw new Error('Missing lineIds array');
+
+     const query = `
+       mutation RemoveFromCart($cartId: ID!, $lineIds: [ID!]!) {
+         cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+           cart {
+             id
+             lines(first: 50) {
+                edges { node { id quantity } }
+             }
+             cost { totalAmount { amount currencyCode } }
+           }
+           userErrors { field message }
+         }
+       }
+     `;
+
+    const { data } = await graphQlRequest(this.env, query, { cartId, lineIds });
+    if (data?.cartLinesRemove?.userErrors?.length > 0) {
+        throw new Error(data.cartLinesRemove.userErrors.map((e: any) => e.message).join(', '));
+    }
+    this.logStructured(request, 'remove_item_from_cart', false, start);
+    return data?.cartLinesRemove?.cart;
   }
 
   logStructured(request: Request, toolName: string, cacheHit: boolean, start: number): void {

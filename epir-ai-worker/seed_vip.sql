@@ -1,0 +1,1 @@
+INSERT INTO client_profiles (client_id, ai_context, preferences, lead_score, total_sessions, last_seen, created_at) VALUES ('demo-vip-anna', '{"style":"art-deco", "budget":"high"}', '{"purchase_intent":"rocznica 10 lat", "preferred_metal":"platyna"}', 95, 12, 1738051200000, 1738051200000);

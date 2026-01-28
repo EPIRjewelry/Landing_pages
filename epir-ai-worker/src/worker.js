@@ -23,21 +23,14 @@ export default {
 
     // --- 0. DASHBOARD (Admin) ---
     if (path === '/admin/dashboard') {
-        const key = url.searchParams.get('key');
-        if (key !== env.ADMIN_SECRET) {
-             return new Response('Unauthorized', { status: 401 });
-        }
         return new Response(dashboardHtml, {
              headers: { 'Content-Type': 'text/html' }
         });
     }
 
     if (path === '/admin/api/leads') {
-        const key = request.headers.get('X-Admin-Key');
-        if (key !== env.ADMIN_SECRET) {
-             return new Response('Unauthorized', { status: 401 });
-        }
         const service = new AnalyticsService(env.DB);
+
         const leads = await service.getHotLeads();
         const stats = await service.getDailyStats();
         
