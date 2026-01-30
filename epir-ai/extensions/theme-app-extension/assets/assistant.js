@@ -108,11 +108,10 @@ function renderCheckoutButton(checkoutUrl, messageEl) {
   btn.textContent = 'Przejdź do kasy →';
   btn.setAttribute('target', '_blank');
   btn.setAttribute('rel', 'noopener noreferrer');
-  btn.style.cssText = 'display:inline-block;margin-top:10px;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;';
-  
+  // Styling handled by CSS (.epir-checkout-button)
   messageEl.appendChild(document.createElement('br'));
   messageEl.appendChild(btn);
-}
+} 
 
 function reportUiExtensionError(error, context = {}) {
   try {
@@ -171,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Banner informacyjny dla klientów rozpoznanych lokalnie, ale nie zalogowanych ---
     const banner = document.getElementById('local-memory-banner');
     if (banner && !loggedInCustomerId && localName) {
-      banner.style.display = 'block';
+      banner.classList.remove('is-hidden');
     }
 
     // ============================================================================
@@ -358,10 +357,8 @@ async function sendMessageToWorker(
 ) {
   // Small UX helpers: global loader below messages
   const globalLoader = document.getElementById('assistant-loader');
-  const showGlobalLoader = () => { try { if (globalLoader) globalLoader.style.display = 'flex'; } catch {}
-  };
-  const hideGlobalLoader = () => { try { if (globalLoader) globalLoader.style.display = 'none'; } catch {}
-  };
+  const showGlobalLoader = () => { try { if (globalLoader) { globalLoader.classList.remove('is-hidden'); globalLoader.classList.add('is-loading'); } } catch {} };
+  const hideGlobalLoader = () => { try { if (globalLoader) { globalLoader.classList.add('is-hidden'); globalLoader.classList.remove('is-loading'); } } catch {} };
 
   // Render mode: 'growing' (default) or 'dots' (keeps '...' until finish)
   const sectionEl = document.getElementById('epir-assistant-section');
