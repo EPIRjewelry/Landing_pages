@@ -1,54 +1,26 @@
-// Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
-// Przywrócona wersja z backupu (UTF-8, poprawne polskie znaki)
-// extensions/asystent-klienta/assets/chat.ts
-// Lekki, poprawiony klient czatu z obsługą streaming SSE/JSON + fallback.
-// Kompiluj do JS (np. tsc) przed użyciem w Theme App Extension.
+// extensions/theme-app-extension/assets/assistant.js
+// Klient czatu z obsługą streaming SSE/JSON + FALLBACK (Autonaprawa widoczności)
 
 /* ===== CART INTEGRATION ===== */
-
-/**
- * Pobiera cart_id z Shopify Cart API (localStorage lub /cart.js)
- * Zwraca cart_id w formacie gid://shopify/Cart/xyz lub null
- */
 async function getShopifyCartId() {
   try {
-    // Shopify cart token jest dostępny w localStorage lub przez /cart.js
     const cartRes = await fetch('/cart.js', {
       method: 'GET',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' }
     });
-    
-    if (!cartRes.ok) {
-      console.warn('Failed to fetch Shopify cart:', cartRes.status);
-      return null;
-    }
-    
+    if (!cartRes.ok) return null;
     const cartData = await cartRes.json();
-    // Shopify cart response: { token: "...", items: [...], ... }
     if (cartData && cartData.token) {
-      // Convert token to GID format
       return `gid://shopify/Cart/${cartData.token}`;
     }
-    
     return null;
   } catch (err) {
-    // W getShopifyCartId() nie mamy kontekstu wiadomości (message id) ani renderMode.
-    // Zgłaszamy błąd do Analytics i zwracamy null, aby chat mógł kontynuować.
-    console.error('[Assistant] getShopifyCartId error', err);
-    try { 
-      reportUiExtensionError(err, { stage: 'get_cart_id' }); 
-    } catch (e) { 
-      console.warn('reportUiExtensionError failed', e); 
-    }
+    console.warn('[Assistant] getShopifyCartId error', err);
     return null;
   }
 }
 
-/**
- * Parsuje odpowiedź asystenta i wyodrębnia specjalne akcje
- * Zwraca obiekt z parsed text + extracted actions
- */
 function parseAssistantResponse(text) {
   const actions = {
     hasCheckoutUrl: false,
@@ -60,47 +32,35 @@ function parseAssistantResponse(text) {
   };
   
   let cleanedText = text;
-  
-  // Wyczyść ewentualne markery Harmony/tool_call (fallback) zanim pokażemy userowi
   cleanedText = cleanedText
     .replace(/<\|call\|>[\s\S]*?<\|end\|>/g, '')
     .replace(/<\|return\|>[\s\S]*?<\|end\|>/g, '')
     .replace(/<\|.*?\|>/g, '')
     .trim();
   
-  // Wykryj checkout URL
   const checkoutUrlMatch = text.match(/https:\/\/[^\s]+\/checkouts\/[^\s]+/);
   if (checkoutUrlMatch) {
     actions.hasCheckoutUrl = true;
     actions.checkoutUrl = checkoutUrlMatch[0];
   }
   
-  // Wykryj akcje koszyka w formacie [CART_UPDATED: ...]
   const cartActionMatch = text.match(/\[CART_UPDATED:([^\]]+)\]/);
   if (cartActionMatch) {
     actions.hasCartUpdate = true;
     cleanedText = cleanedText.replace(/\[CART_UPDATED:[^\]]+\]/, '').trim();
   }
   
-  // Wykryj status zamówienia w formacie [ORDER_STATUS: ...]
   const orderStatusMatch = text.match(/\[ORDER_STATUS:([^\]]+)\]/);
   if (orderStatusMatch) {
     actions.hasOrderStatus = true;
     try {
       actions.orderDetails = JSON.parse(orderStatusMatch[1]);
-    } catch (e) {
-      console.warn('Failed to parse order details:', e);
-    }
-
+    } catch (e) {}
     cleanedText = cleanedText.replace(/\[ORDER_STATUS:[^\]]+\]/, '').trim();
   }
-  
   return { text: cleanedText, actions };
 }
 
-/**
- * Renderuje specjalny widget checkout button jeśli wykryto URL
- */
 function renderCheckoutButton(checkoutUrl, messageEl) {
   const btn = document.createElement('a');
   btn.href = checkoutUrl;
@@ -108,107 +68,111 @@ function renderCheckoutButton(checkoutUrl, messageEl) {
   btn.textContent = 'Przejdź do kasy →';
   btn.setAttribute('target', '_blank');
   btn.setAttribute('rel', 'noopener noreferrer');
-  // Styling handled by CSS (.epir-checkout-button)
   messageEl.appendChild(document.createElement('br'));
   messageEl.appendChild(btn);
-} 
-
-function reportUiExtensionError(error, context = {}) {
-  try {
-    const publish = typeof Shopify !== 'undefined' && Shopify?.analytics && typeof Shopify.analytics.publish === 'function'
-      ? Shopify.analytics.publish
-      : null;
-    if (!publish) return;
-
-    const safeError = error instanceof Error ? error : new Error(String(error));
-    publish('ui_extension_errored', {
-      source: 'assistant',
-      message: safeError.message,
-      stack: safeError.stack || null,
-      url: typeof window !== 'undefined' ? window.location.href : null,
-      timestamp: Date.now(),
-      ...context,
-    });
-  } catch (publishErr) {
-    console.warn('[EPIR Assistant] Failed to publish ui_extension_errored', publishErr);
-  }
 }
 
-// Minimal initializer: bind toggle button to open/close the assistant
+// ===== GŁÓWNA INICJALIZACJA Z FALLBACKIEM =====
 document.addEventListener('DOMContentLoaded', () => {
   try {
-    const section = document.getElementById('epir-assistant-section');
-    if (!section) return;
+    let section = document.getElementById('epir-assistant-section');
+    
+    // --- FALLBACK: Jeśli widget nie został dodany w Theme Editorze, stwórz go ręcznie ---
+    if (!section) {
+      console.log('[EPIR Assistant] Widget container missing, injecting fallback...');
+      section = document.createElement('div');
+      section.id = 'epir-assistant-section';
+      section.className = 'epir-assistant epir-assistant-section epir-assistant--bottom-right';
+      section.setAttribute('aria-live', 'polite');
+      section.dataset.shopDomain = window.Shopify ? window.Shopify.shop : window.location.hostname;
+      section.dataset.workerEndpoint = '/apps/assistant/chat';
+      section.dataset.startClosed = 'true';
+
+      section.innerHTML = `
+        <style>#epir-assistant-section .assistant-form button { background-color: #8B7D6A; }</style>
+        <div class="assistant-container">
+          <div class="assistant-header">
+             <h3>Doradca EPIR-ART</h3>
+             <button id="assistant-toggle-button">Otwórz</button>
+          </div>
+          <div id="assistant-content" class="assistant-content is-closed">
+             <div id="assistant-messages" class="assistant-messages">
+                <div class="msg msg-assistant welcome-message">Witaj! W czym mogę pomóc?</div>
+             </div>
+             <form id="assistant-form" class="assistant-form">
+                <input id="assistant-input" type="text" placeholder="Zadaj pytanie..." required autocomplete="off">
+                <button type="submit" id="assistant-send-button">Wyślij</button>
+             </form>
+             <div id="assistant-loader" class="assistant-loader is-hidden"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(section);
+      
+      const cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = window.epirAssistantCssUrl || '/apps/assistant/assets/assistant.css';
+      document.head.appendChild(cssLink);
+    }
+    // --- KONIEC FALLBACKU ---
+
     const toggle = document.getElementById('assistant-toggle-button');
     const content = document.getElementById('assistant-content');
-    const startClosed = section.dataset.startClosed === 'true' || section.getAttribute('data-start-closed') === 'true';
+    const startClosed = section.dataset.startClosed === 'true';
+    
     if (startClosed && content) content.classList.add('is-closed');
-    if (!toggle) return;
-    toggle.addEventListener('click', (e) => {
-      e.preventDefault();
-      const isClosed = content && content.classList.toggle('is-closed');
-      // update ARIA
-      toggle.setAttribute('aria-expanded', isClosed ? 'false' : 'true');
-    });
-
-    // --- Powitanie klienta imieniem z localStorage/sessionStorage ---
-    const messagesEl = document.getElementById('assistant-messages');
-    let localName = null;
-    try {
-      localName = localStorage.getItem('epir_customer_name') || sessionStorage.getItem('epir_customer_name');
-    } catch {}
-    const loggedInCustomerId = section.dataset.loggedInCustomerId || '';
-    if (localName && !loggedInCustomerId && messagesEl) {
-      // Dodaj powitanie z imieniem tylko dla lokalnie rozpoznanego klienta
-      const welcomeDiv = document.createElement('div');
-      welcomeDiv.className = 'msg msg-assistant welcome-message';
-      welcomeDiv.setAttribute('role', 'status');
-      welcomeDiv.textContent = `Witaj ponownie, ${localName}! Miło Cię widzieć.`;
-      messagesEl.insertBefore(welcomeDiv, messagesEl.firstChild);
+    
+    if (toggle) {
+      toggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isClosed = content && content.classList.toggle('is-closed');
+        toggle.setAttribute('aria-expanded', isClosed ? 'false' : 'true');
+      });
     }
 
-    // --- Banner informacyjny dla klientów rozpoznanych lokalnie, ale nie zalogowanych ---
-    const banner = document.getElementById('local-memory-banner');
-    if (banner && !loggedInCustomerId && localName) {
-      banner.classList.remove('is-hidden');
-    }
-
-    // ============================================================================
-    // PROACTIVE CHAT ACTIVATION - Listen for events from Web Pixel
-    // ============================================================================
-    // Web Pixel emits 'epir:activate-chat' when analytics-worker recommends activation
-    window.addEventListener('epir:activate-chat', (event) => {
-      console.log('[EPIR Assistant] 🚀 Proactive chat activation triggered:', event.detail);
-      
-      // Auto-open chat if closed
-      if (content && content.classList.contains('is-closed')) {
-        content.classList.remove('is-closed');
-        if (toggle) toggle.setAttribute('aria-expanded', 'true');
-        console.log('[EPIR Assistant] ✅ Chat opened proactively');
-      }
-      
-      // Optional: Add proactive greeting message
-      if (messagesEl && event.detail?.reason) {
-        const proactiveMsg = document.createElement('div');
-        proactiveMsg.className = 'msg msg-assistant proactive-greeting';
-        proactiveMsg.setAttribute('role', 'status');
-        proactiveMsg.innerHTML = `<strong>👋 Cześć!</strong> Widzę, że przeglądasz naszą kolekcję. Mogę Ci w czymś pomóc?`;
-        messagesEl.appendChild(proactiveMsg);
+    // Obsługa formularza (Submit)
+    const form = document.querySelector('#assistant-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const input = document.querySelector('#assistant-input');
+        const messagesEl = document.querySelector('#assistant-messages');
+        const text = (input && input.value && input.value.trim()) || '';
         
-        // Scroll to show new message
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
-    });
+        if (!text || !messagesEl) return;
+        
+        input.value = '';
+        const controller = new AbortController();
+        const setLoading = (b) => {
+          const loader = document.getElementById('assistant-loader');
+          if (loader) {
+             if(b) loader.classList.remove('is-hidden'); 
+             else loader.classList.add('is-hidden');
+          }
+        };
+
+        // Konstrukcja endpointu
+        let endpoint = section.dataset.workerEndpoint || '/apps/assistant/chat';
+        const params = new URLSearchParams();
+        if (section.dataset.shopDomain) params.set('shop', section.dataset.shopDomain);
+        if (section.dataset.loggedInCustomerId) params.set('logged_in_customer_id', section.dataset.loggedInCustomerId);
+        
+        if (!endpoint.includes('?')) {
+            const paramStr = params.toString();
+            if (paramStr) endpoint = `${endpoint}?${paramStr}`;
+        }
+
+        await sendMessageToWorker(text, endpoint, 'epir-assistant-session', messagesEl, setLoading, controller);
+      });
+    }
+
   } catch (e) {
     console.warn('Assistant init error', e);
   }
 });
 
-/* Typy - usunięte dla kompatybilności z przeglądarką (TypeScript → JavaScript) */
-// type MessageElement = { id; el };
-// type StreamPayload = { content?; delta?; session_id?; error?; done? };
-
-/* Pomocnicze UI */
+/* Helpery UI */
 function createAssistantMessage(messagesEl) {
   const id = `msg-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   const div = document.createElement('div');
@@ -233,9 +197,6 @@ function finalizeAssistantMessage(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('msg-typing');
-  // accessibility: usuń aria-busy jeśli ustawione, pozostaw role=status
-  el.removeAttribute('aria-busy');
-  el.setAttribute('role', 'status');
 }
 
 function createUserMessage(messagesEl, text) {
@@ -246,17 +207,11 @@ function createUserMessage(messagesEl, text) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* Robustny parser SSE/JSONL z obsługą delta (nowy) i content (fallback) */
-async function processSSEStream(
-  body,
-  msgId,
-  sessionIdKey,
-  onUpdate
-) {
+/* SSE Streaming Processor */
+async function processSSEStream(body, msgId, sessionIdKey, onUpdate) {
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
-  let accumulated = '';
 
   try {
     while (true) {
@@ -264,81 +219,26 @@ async function processSSEStream(
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      // Procesuj pełne eventy (oddzielone pustą linią)
       let index;
       while ((index = buffer.indexOf('\n\n')) !== -1) {
         const rawEvent = buffer.slice(0, index);
         buffer = buffer.slice(index + 2);
 
-        // Złóż wszystkie linie 'data:' w rawEvent
         const lines = rawEvent.split(/\r?\n/);
         const dataLines = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5));
         const dataStr = dataLines.join('\n').trim();
-        if (!dataStr) continue;
+        if (!dataStr || dataStr === '[DONE]') continue;
 
-        if (dataStr === '[DONE]') return;
-
-        let parsed;
-        try {
-          parsed = JSON.parse(dataStr);
-        } catch (e) {
-          console.error('SSE JSON parse error', e, dataStr);
-              reportUiExtensionError(e, { stage: 'parse_sse', stream_chunk: dataStr.slice(0, 500) });
-          throw new Error('Błąd komunikacji: otrzymano nieprawidłowe dane strumienia.');
-        }
-
-        if (parsed.error) throw new Error(parsed.error);
-
-        if (parsed.session_id) {
-          try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch (e) { /* silent */ }
-        }
-
-        // Obsługa natywnych tool_calls (status)
-        if (parsed.tool_call) {
-          const calls = Array.isArray(parsed.tool_call) ? parsed.tool_call : [parsed.tool_call];
-          const names = calls.map((c) => c.name || c.id || 'narzędzie').join(', ');
-          const statusMsg = `Wywołuję narzędzie: ${names}...`;
-          onUpdate(statusMsg, parsed);
-          continue;
-        }
-
-        // Nowa obsługa: delta (incremental) lub content (full replacement)
-        if (parsed.delta !== undefined) {
-          accumulated += parsed.delta;
-          onUpdate(accumulated, parsed);
-        } else if (parsed.content !== undefined) {
-          accumulated = parsed.content;
-          onUpdate(accumulated, parsed);
-        }
-
-        if (parsed.done) return;
-      }
-    }
-
-    // Po zakończeniu odczytu: spróbuj przetworzyć pozostałości w bufferze
-    if (buffer.trim()) {
-      const lines = buffer.split(/\r?\n/);
-      const dataLines = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5));
-      const dataStr = dataLines.join('\n').trim();
-      if (dataStr && dataStr !== '[DONE]') {
         try {
           const parsed = JSON.parse(dataStr);
           if (parsed.session_id) try { sessionStorage.setItem(sessionIdKey, parsed.session_id); } catch {}
-          if (parsed.tool_call) {
-            const calls = Array.isArray(parsed.tool_call) ? parsed.tool_call : [parsed.tool_call];
-            const names = calls.map((c) => c.name || c.id || 'narzędzie').join(', ');
-            const statusMsg = `Wywołuję narzędzie: ${names}...`;
-            onUpdate(statusMsg, parsed);
-          } else if (parsed.delta !== undefined) {
-            accumulated += parsed.delta;
-            onUpdate(accumulated, parsed);
+          
+          if (parsed.delta !== undefined) {
+             onUpdate(parsed.delta, parsed);
           } else if (parsed.content !== undefined) {
-            accumulated = parsed.content;
-            onUpdate(accumulated, parsed);
+             onUpdate(parsed.content, parsed);
           }
-        } catch (e) {
-          console.warn('Nieparsowalny ostatni event SSE', e);
-        }
+        } catch (e) { console.error('SSE parse error', e); }
       }
     }
   } finally {
@@ -346,227 +246,55 @@ async function processSSEStream(
   }
 }
 
-/* Główna funkcja wysyłki z fallbackiem JSON */
-async function sendMessageToWorker(
-  text,
-  endpoint,
-  sessionIdKey,
-  messagesEl,
-  setLoading,
-  controller
-) {
-  // Small UX helpers: global loader below messages
-  const globalLoader = document.getElementById('assistant-loader');
-  const showGlobalLoader = () => { try { if (globalLoader) { globalLoader.classList.remove('is-hidden'); globalLoader.classList.add('is-loading'); } } catch {} };
-  const hideGlobalLoader = () => { try { if (globalLoader) { globalLoader.classList.add('is-hidden'); globalLoader.classList.remove('is-loading'); } } catch {} };
-
-  // Render mode: 'growing' (default) or 'dots' (keeps '...' until finish)
-  const sectionEl = document.getElementById('epir-assistant-section');
-  const renderMode = (sectionEl && sectionEl.dataset && sectionEl.dataset.streamRender) || 'growing';
-
+/* Funkcja wysyłająca wiadomość */
+async function sendMessageToWorker(text, endpoint, sessionIdKey, messagesEl, setLoading, controller) {
   setLoading(true);
-  showGlobalLoader();
   createUserMessage(messagesEl, text);
-  const { id: msgId, el: msgEl } = createAssistantMessage(messagesEl);
+  const { id: msgId } = createAssistantMessage(messagesEl);
   let accumulated = '';
-  let lastParsedActions = null;
-  // Perf metrics
-  const tStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  let firstChunkAt = null;
-  let chunks = 0;
 
   try {
-    // Pobierz cart_id z Shopify przed wysłaniem
     const cartId = await getShopifyCartId();
-    console.log('[Assistant] Cart ID:', cartId);
     
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream, application/json',
-      },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({
         message: text,
-        session_id: (() => { try { return sessionStorage.getItem(sessionIdKey); } catch { return null; } })(),
-        cart_id: cartId, // Wyślij cart_id w sesji
+        session_id: sessionStorage.getItem(sessionIdKey),
+        cart_id: cartId,
         stream: true,
       }),
       signal: controller.signal,
     });
 
-    if (!res.ok) {
-      const errText = await (async () => { try { return await res.text(); } catch { return ''; } })();
-      console.error('Server error:', res.status, errText);
-      throw new Error(`Serwer zwrócił błąd (${res.status}).`);
-    }
+    if (!res.ok) throw new Error(`Błąd serwera: ${res.status}`);
 
-    const contentType = res.headers.get('content-type') || '';
-    const hasStreamAPI = res.body && typeof (res.body).getReader === 'function';
-
-    if (hasStreamAPI && contentType.includes('text/event-stream')) {
-      // streaming SSE
-      await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
-        accumulated = content;
-        chunks += 1;
-        if (!firstChunkAt) {
-          firstChunkAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        }
-        
-        // Parsuj odpowiedź i wykryj akcje (checkout URL, cart updates)
-        const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
-        if (renderMode === 'growing') {
-          updateAssistantMessage(msgId, cleanedText);
-        } // in 'dots' mode we keep the initial '...' until stream completes
-        
-        // Zapisz akcje do renderowania po zakończeniu streamu
-        if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
-          lastParsedActions = actions;
-        }
-      });
-    } else if (hasStreamAPI && contentType.includes('application/ndjson')) {
-      // ewentualne inne formy newline-delimited json - można dodać parser
-      await processSSEStream(res.body, msgId, sessionIdKey, (content, parsed) => {
-        accumulated = content;
-        chunks += 1;
-        if (!firstChunkAt) {
-          firstChunkAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        }
-        const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
-        if (renderMode === 'growing') {
-          updateAssistantMessage(msgId, cleanedText);
-        }
-        if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
-          lastParsedActions = actions;
-        }
-      });
+    if (res.headers.get('content-type')?.includes('text/event-stream')) {
+        await processSSEStream(res.body, msgId, sessionIdKey, (chunk) => {
+            accumulated += chunk;
+            const { text: clean } = parseAssistantResponse(accumulated);
+            updateAssistantMessage(msgId, clean);
+        });
     } else {
-      // fallback JSON (serwer buforuje / starsze przeglądarki)
-      const data = await res.json().catch((e) => { throw new Error('Nieprawidłowa odpowiedź serwera.'); });
-      if (data.error) throw new Error(data.error);
-      accumulated = (data.reply) || 'Otrzymano pustą odpowiedź.';
-      
-      // Parsuj odpowiedź w trybie non-streaming
-      const { text: cleanedText, actions } = parseAssistantResponse(accumulated);
-      updateAssistantMessage(msgId, cleanedText);
-      if (actions.hasCheckoutUrl || actions.hasCartUpdate || actions.hasOrderStatus) {
-        lastParsedActions = actions;
-      }
-      
-      if (data.session_id) {
-        try { sessionStorage.setItem(sessionIdKey, data.session_id); } catch {}
-      }
+        const data = await res.json();
+        accumulated = data.reply || data.error || 'Brak odpowiedzi';
+        updateAssistantMessage(msgId, parseAssistantResponse(accumulated).text);
     }
     
-    // Po zakończeniu streamu: uzupełnij treść w trybie 'dots', renderuj akcje (checkout button, cart status)
-      const msgElement = document.getElementById(msgId);
-      if (renderMode === 'dots') {
-        let finalText = '';
-        if (accumulated) {
-          const { text } = parseAssistantResponse(accumulated);
-          finalText = text;
-        } else {
-          finalText = 'Brak wyników, spróbuj innego zapytania.';
-        }
-        updateAssistantMessage(msgId, finalText);
-      }
-      if (lastParsedActions && msgElement) {
-        if (lastParsedActions.hasCheckoutUrl && lastParsedActions.checkoutUrl) {
-          console.log('[Assistant] Rendering checkout button:', lastParsedActions.checkoutUrl);
-          renderCheckoutButton(lastParsedActions.checkoutUrl, msgElement);
-        }
-        if (lastParsedActions.hasCartUpdate) {
-          console.log('[Assistant] Cart was updated');
-          try {
-            document.dispatchEvent(new CustomEvent('cart:refresh'));
-          } catch (e) {
-            console.warn('Failed to dispatch cart:refresh event', e);
-          }
-        }
-        if (lastParsedActions.hasOrderStatus && lastParsedActions.orderDetails) {
-          console.log('[Assistant] Order status:', lastParsedActions.orderDetails);
-          // Można dodać rendering szczegółów zamówienia
-        }
-      }
+    const { actions } = parseAssistantResponse(accumulated);
+    if (actions.hasCheckoutUrl && actions.checkoutUrl) {
+        renderCheckoutButton(actions.checkoutUrl, document.getElementById(msgId));
+    }
+    if (actions.hasCartUpdate) {
+        document.dispatchEvent(new CustomEvent('cart:refresh'));
+    }
+
   } catch (err) {
-    console.error('Błąd czatu:', err);
-    reportUiExtensionError(err, {
-      stage: 'chat_execution',
-      user_message_len: text.length,
-      render_mode: renderMode,
-    });
-    const safeMsg = err instanceof Error ? err.message : 'Nieznany błąd.';
-    const finalText = accumulated.length > 0 ? `${accumulated} (Błąd: ${safeMsg})` : 'Przepraszam, wystąpił błąd. Spróbuj ponownie.';
-    updateAssistantMessage(msgId, finalText);
-    const el = document.getElementById(msgId);
-    if (el) el.classList.add('msg-error');
+    updateAssistantMessage(msgId, "Przepraszam, wystąpił problem z połączeniem.");
+    console.error(err);
   } finally {
     finalizeAssistantMessage(msgId);
     setLoading(false);
-    hideGlobalLoader();
-    // Perf summary
-    const tEnd = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const ttfb = firstChunkAt ? Math.round(firstChunkAt - tStart) : null;
-    const total = Math.round(tEnd - tStart);
-    const avgChunkMs = chunks > 0 ? Math.round((tEnd - (firstChunkAt || tStart)) / Math.max(1, chunks)) : null;
-    console.log('[Assistant][Perf]', {
-      messageLen: text.length,
-      chunks,
-      timeToFirstChunkMs: ttfb,
-      totalMs: total,
-      avgChunkMs,
-      renderMode,
-    });
   }
 }
-
-// Kod ładowany bezpośrednio w przeglądarce - brak eksportów
-
-// DODANE: fix przeładowania strony (preventDefault) i wywołanie /apps/assistant/chat
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    const form = document.querySelector('#assistant-form');
-    if (!form) {
-      console.warn('assistant.js: #assistant-form not found');
-      return;
-    }
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const input = document.querySelector('#assistant-input');
-      const messagesEl = document.querySelector('#assistant-messages');
-      const text = (input && input.value && input.value.trim()) || '';
-      if (!text || !messagesEl) {
-        console.warn('assistant.js: input or messages container not found');
-        return;
-      }
-      input.value = '';
-      const controller = new AbortController();
-      const setLoading = (b) => {
-        if (!messagesEl) return;
-        if (b) messagesEl.classList.add('is-loading'); else messagesEl.classList.remove('is-loading');
-      };
-      try {
-        // Build endpoint from section dataset so we include shop and customer_id in query params
-        const sectionEl = document.getElementById('epir-assistant-section');
-        let endpoint = '/apps/assistant/chat';
-        if (sectionEl && sectionEl.dataset) {
-          const shop = sectionEl.dataset.shopDomain || '';
-          const customerId = sectionEl.dataset.loggedInCustomerId || '';
-          // append as query params (worker expects logged_in_customer_id & shop in URL)
-          const params = new URLSearchParams();
-          if (shop) params.set('shop', shop);
-          if (customerId) params.set('logged_in_customer_id', customerId);
-          const paramStr = params.toString();
-          if (paramStr) endpoint = `${endpoint}?${paramStr}`;
-        }
-        await sendMessageToWorker(text, endpoint, 'epir-assistant-session', messagesEl, setLoading, controller);
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    });
-  } catch (e) {
-    console.error('assistant.js DOMContentLoaded submit handler error:', e);
-  }
-});
