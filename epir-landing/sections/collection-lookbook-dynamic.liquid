@@ -21,6 +21,14 @@
       <div class="lookbook-grid lookbook-grid--{{ section.settings.columns }}">
 {% for image_ref in enhanced.lookbook_images %}
   {% assign image = image_ref %}
+    <!-- TEMP DEBUG -->
+    <div class="lookbook-debug" style="background:#fff6e8;padding:8px;border-radius:6px;margin:8px 0;font-size:12px;">
+      <strong>DEBUG IMAGE REF:</strong><br>
+      Raw: {{ image_ref }}<br>
+      image_url: {{ image_ref | image_url: width: 1200 }}<br>
+      image_tag: {{ image_ref | image_tag: alt: collection.title, loading: "lazy" }}
+    </div>
+    <!-- END TEMP DEBUG -->
   <figure class="lookbook-item">
     {% if section.settings.show_collection_name %}
       <figcaption class="lookbook-caption">{{ collection.title }}</figcaption>
