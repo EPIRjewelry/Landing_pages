@@ -19,24 +19,15 @@
       {% endif %}
 
       <div class="lookbook-grid lookbook-grid--{{ section.settings.columns }}">
-        {% for image in enhanced.lookbook_images %}
-          <figure class="lookbook-item">
-            {% if section.settings.show_collection_name %}
-              <figcaption class="lookbook-caption">{{ collection.title }}</figcaption>
-            {% endif %}
-            <img 
-              src="{{ image | image_url: width: 1200 }}"
-              srcset="{{ image | image_url: width: 400 }} 400w,
-                      {{ image | image_url: width: 800 }} 800w,
-                      {{ image | image_url: width: 1200 }} 1200w"
-              sizes="(min-width: 990px) {{ 100 | divided_by: section.settings.columns }}vw, 100vw"
-              alt="{{ collection.title }} — lookbook {{ forloop.index }}"
-              loading="lazy"
-              width="{{ image.width }}"
-              height="{{ image.height }}"
-            >
-          </figure>
-        {% endfor %}
+{% for image_ref in enhanced.lookbook_images %}
+  {% assign image = image_ref %}
+  <figure class="lookbook-item">
+    {% if section.settings.show_collection_name %}
+      <figcaption class="lookbook-caption">{{ collection.title }}</figcaption>
+    {% endif %}
+    {{ image | image_url: width: 1200 | image_tag: loading: "lazy", alt: collection.title }}
+  </figure>
+{% endfor %}
       </div>
 
     </div>
