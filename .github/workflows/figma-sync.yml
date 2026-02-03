@@ -19,7 +19,7 @@ jobs:
 
       - name: Install deps
         run: npm ci
-        working-directory: ./hydrogen-landing || .
+        working-directory: ./hydrogen-landing
 
       - name: Run Figma tokens (dry if secret missing)
         env:
@@ -42,3 +42,4 @@ jobs:
         with:
           name: figma-generated
           path: generated/
+

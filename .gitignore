@@ -10,3 +10,6 @@ generated/
 .wrangler/
 *.sqlite*
 .dev.vars
+# lokalny arkusz — nie pushować
+products.csv
+
